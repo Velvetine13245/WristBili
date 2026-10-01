@@ -1,0 +1,517 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back" onclick="back"><text class="back-text">‹</text></div>
+      <text class="title">UP主主页</text>
+    </div>
+
+    <div class="up-card">
+      <image class="face" src="{{face}}" />
+      <div class="up-info">
+        <text class="name">{{name}}</text>
+        <text class="stat">关注 {{following}} · 粉丝 {{follower}}</text>
+      </div>
+      <div class="follow-btn" onclick="toggleFollow"><text class="follow-text">{{followText}}</text></div>
+    </div>
+
+    <div class="intro-card">
+      <text class="intro-title">个人介绍</text>
+      <text class="intro-text">{{sign}}</text>
+    </div>
+
+    <text class="status">{{status}}</text>
+
+    <div class="video-item" if="{{v1Show}}" onclick="open1">
+      <image class="cover" src="{{v1Pic}}" />
+      <div class="video-info"><text class="video-title">{{v1Title}}</text><text class="video-stat">{{v1Stat}}</text></div>
+    </div>
+    <div class="video-item" if="{{v2Show}}" onclick="open2">
+      <image class="cover" src="{{v2Pic}}" />
+      <div class="video-info"><text class="video-title">{{v2Title}}</text><text class="video-stat">{{v2Stat}}</text></div>
+    </div>
+    <div class="video-item" if="{{v3Show}}" onclick="open3">
+      <image class="cover" src="{{v3Pic}}" />
+      <div class="video-info"><text class="video-title">{{v3Title}}</text><text class="video-stat">{{v3Stat}}</text></div>
+    </div>
+    <div class="video-item" if="{{v4Show}}" onclick="open4">
+      <image class="cover" src="{{v4Pic}}" />
+      <div class="video-info"><text class="video-title">{{v4Title}}</text><text class="video-stat">{{v4Stat}}</text></div>
+    </div>
+    <div class="video-item" if="{{v5Show}}" onclick="open5">
+      <image class="cover" src="{{v5Pic}}" />
+      <div class="video-info"><text class="video-title">{{v5Title}}</text><text class="video-stat">{{v5Stat}}</text></div>
+    </div>
+    <div class="no-video" if="{{noVideoShow}}">
+      <text class="no-video-text">暂无公开视频</text>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetch from '@system.fetch'
+import storage from '@system.storage'
+
+export default {
+  private: {
+    mid: '',
+    name: 'UP主',
+    face: '/common/images/icon.png',
+    following: '-',
+    follower: '-',
+    sign: '正在读取个人介绍...',
+    followText: '关注',
+    status: '正在加载UP主页...',
+    noVideoShow: false,
+    videos: [],
+    v1Show: false, v1Title: '', v1Bvid: '', v1Pic: '/common/images/icon.png', v1Stat: '',
+    v2Show: false, v2Title: '', v2Bvid: '', v2Pic: '/common/images/icon.png', v2Stat: '',
+    v3Show: false, v3Title: '', v3Bvid: '', v3Pic: '/common/images/icon.png', v3Stat: '',
+    v4Show: false, v4Title: '', v4Bvid: '', v4Pic: '/common/images/icon.png', v4Stat: '',
+    v5Show: false, v5Title: '', v5Bvid: '', v5Pic: '/common/images/icon.png', v5Stat: ''
+  },
+  onInit() {
+    if (!this.mid) {
+      this.status = '缺少UP主ID'
+      return
+    }
+    this.loadProfile()
+    this.loadVideos()
+  },
+  onShow() {
+  },
+  formatNum(num) {
+    if (!num) {
+      return '0'
+    }
+    if (num > 10000) {
+      return (num / 10000).toFixed(1) + '万'
+    }
+    return '' + num
+  },
+  cleanImageUrl(url) {
+    if (!url) {
+      return ''
+    }
+    if (url.indexOf('http') !== 0 && url.indexOf('//') === 0) {
+      url = 'https:' + url
+    }
+    if (url.indexOf('@') > 0) {
+      url = url.split('@')[0]
+    }
+    return url
+  },
+  buildCover(url) {
+    var pic = this.cleanImageUrl(url)
+    if (!pic) {
+      return '/common/images/icon.png'
+    }
+    if (pic.indexOf('hdslb.com') > 0 || pic.indexOf('biliimg.com') > 0) {
+      pic = pic + '@96w_64h_1e_1c.jpg'
+    }
+    return pic
+  },
+  buildAvatar(url) {
+    var pic = this.cleanImageUrl(url)
+    if (!pic) {
+      return '/common/images/icon.png'
+    }
+    if (pic.indexOf('hdslb.com') > 0 || pic.indexOf('biliimg.com') > 0) {
+      pic = pic + '@48w_48h_1e_1c.jpg'
+    }
+    return pic
+  },
+  getCookie(done) {
+    storage.get({
+      key: 'bili_cookie',
+      success: function(cookie) {
+        done(cookie || '')
+      },
+      fail: function() {
+        done('')
+      }
+    })
+  },
+  loadProfile() {
+    var self = this
+    this.getCookie(function(cookie) {
+      fetch.fetch({
+        url: 'https://api.bilibili.com/x/web-interface/card?mid=' + self.mid,
+        header: {
+          'Cookie': cookie,
+          'User-Agent': 'Mozilla/5.0',
+          'Referer': 'https://space.bilibili.com/' + self.mid
+        },
+        responseType: 'json',
+        success: function(res) {
+          var data = res.data
+          if (typeof data === 'string') {
+            data = JSON.parse(data)
+          }
+          if (data && data.data && data.data.card) {
+            var card = data.data.card
+            self.name = card.name || self.name
+            self.face = self.buildAvatar(card.face || self.face)
+            self.sign = card.sign || '这个UP主还没有填写个人介绍'
+            if (card.attention !== undefined) {
+              self.following = self.formatNum(card.attention)
+            }
+            if (card.fans !== undefined) {
+              self.follower = self.formatNum(card.fans)
+            }
+          }
+          self.loadRelationStat(cookie)
+        },
+        fail: function() {
+          self.loadRelationStat(cookie)
+        }
+      })
+    })
+  },
+  loadRelationStat(cookie) {
+    var self = this
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/relation/stat?vmid=' + this.mid,
+      header: {
+        'Cookie': cookie,
+        'User-Agent': 'Mozilla/5.0'
+      },
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.data) {
+          self.following = self.formatNum(data.data.following || 0)
+          self.follower = self.formatNum(data.data.follower || 0)
+        }
+      },
+      fail: function() {}
+    })
+  },
+  getCookieValue(cookie, key) {
+    var parts = cookie.split(';')
+    var i = 0
+    for (i = 0; i < parts.length; i++) {
+      var p = parts[i].trim()
+      if (p.indexOf(key + '=') === 0) {
+        return p.substring(key.length + 1)
+      }
+    }
+    return ''
+  },
+  toggleFollow() {
+    var self = this
+    this.getCookie(function(cookie) {
+      var csrf = self.getCookieValue(cookie, 'bili_jct')
+      if (!cookie || !csrf) {
+        self.status = '未登录，无法关注'
+        return
+      }
+      self.status = '正在关注UP主...'
+      fetch.fetch({
+        url: 'https://api.bilibili.com/x/relation/modify',
+        method: 'POST',
+        data: 'fid=' + self.mid + '&act=1&re_src=11&csrf=' + csrf,
+        header: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': cookie,
+          'User-Agent': 'Mozilla/5.0',
+          'Referer': 'https://space.bilibili.com/' + self.mid
+        },
+        responseType: 'json',
+        success: function(res) {
+          var data = res.data
+          if (typeof data === 'string') {
+            data = JSON.parse(data)
+          }
+          if (data && data.code === 0) {
+            self.followText = '已关注'
+            self.status = '关注成功'
+          } else {
+            self.status = '关注失败：' + (data && data.message ? data.message : '接口错误')
+          }
+        },
+        fail: function() {
+          self.status = '关注接口请求失败'
+        }
+      })
+    })
+  },
+  loadVideos() {
+    this.loadVideosByApi(0)
+  },
+  buildVideoUrl(index) {
+    if (index === 0) {
+      return 'https://api.bilibili.com/x/space/arc/search?mid=' + this.mid + '&pn=1&ps=5&tid=0&keyword=&order=pubdate&jsonp=jsonp&platform=web'
+    }
+    if (index === 1) {
+      return 'https://app.bilibili.com/x/v2/space/archive/cursor?vmid=' + this.mid + '&ps=5&pn=1&order=pubdate&mobi_app=android&platform=android'
+    }
+    return 'https://api.bilibili.com/x/polymer/web-space/seasons_archives_list?mid=' + this.mid + '&page_num=1&page_size=5'
+  },
+  extractVideoList(data) {
+    if (data && data.data && data.data.list && data.data.list.vlist) {
+      return data.data.list.vlist
+    }
+    if (data && data.data && data.data.list && data.data.list.archives) {
+      return data.data.list.archives
+    }
+    if (data && data.data && data.data.archives) {
+      return data.data.archives
+    }
+    if (data && data.data && data.data.item) {
+      return data.data.item
+    }
+    if (data && data.data && data.data.items) {
+      return data.data.items
+    }
+    if (data && data.data && data.data.archives_list && data.data.archives_list.archives) {
+      return data.data.archives_list.archives
+    }
+    if (data && data.data && data.data.aids && data.data.aids.length > 0) {
+      return data.data.aids
+    }
+    return []
+  },
+  loadVideosByApi(index) {
+    var self = this
+    var tips = ['正在加载前5个视频...', '主接口无结果，尝试移动端接口...', '移动端无结果，尝试合集接口...']
+    this.status = tips[index] || '正在尝试备用接口...'
+    this.getCookie(function(cookie) {
+      fetch.fetch({
+        url: self.buildVideoUrl(index),
+        header: {
+          'Cookie': cookie,
+          'User-Agent': index === 1 ? 'Mozilla/5.0 BiliDroid/7.0.0' : 'Mozilla/5.0',
+          'Referer': 'https://space.bilibili.com/' + self.mid
+        },
+        responseType: 'json',
+        success: function(res) {
+          var data = res.data
+          if (typeof data === 'string') {
+            data = JSON.parse(data)
+          }
+          var list = self.extractVideoList(data)
+          if ((!list || list.length === 0) && index < 2) {
+            self.loadVideosByApi(index + 1)
+            return
+          }
+          self.applyVideos(list)
+        },
+        fail: function() {
+          if (index < 2) {
+            self.loadVideosByApi(index + 1)
+          } else {
+            self.status = 'UP视频接口请求失败'
+            self.applyVideos([])
+          }
+        }
+      })
+    })
+  },
+  applyVideos(list) {
+    var i = 0
+    this.videos = list || []
+    for (i = 1; i <= 5; i++) {
+      this['v' + i + 'Show'] = false
+    }
+    this.noVideoShow = false
+    for (i = 0; i < this.videos.length && i < 5; i++) {
+      var item = this.videos[i]
+      var n = i + 1
+      this['v' + n + 'Show'] = true
+      this['v' + n + 'Title'] = item.title || item.name || 'UP视频'
+      this['v' + n + 'Bvid'] = item.bvid || item.bvid_str || item.bv_id || ''
+      this['v' + n + 'Pic'] = this.buildCover(item.pic || item.cover || item.cover_url)
+      this['v' + n + 'Stat'] = this.formatNum(item.play || item.view || item.stat && item.stat.view || 0) + '播放'
+    }
+    if (this.videos.length === 0) {
+      this.noVideoShow = true
+      this.status = '暂无公开视频'
+    } else {
+      this.status = '已加载前5个视频'
+    }
+  },
+  openVideo(n) {
+    if (!this['v' + n + 'Bvid']) {
+      return
+    }
+    router.push({ uri: '/video', params: { bvid: this['v' + n + 'Bvid'], title: this['v' + n + 'Title'], pic: this['v' + n + 'Pic'] } })
+  },
+  open1() { this.openVideo(1) },
+  open2() { this.openVideo(2) },
+  open3() { this.openVideo(3) },
+  open4() { this.openVideo(4) },
+  open5() { this.openVideo(5) },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  height: 480px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_blue.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 8px;
+
+}
+.header {
+  width: 318px;
+  height: 38px;
+  flex-direction: row;
+  align-items: center;
+}
+.back {
+  width: 34px;
+  height: 34px;
+  justify-content: center;
+  align-items: center;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 30px;
+}
+.title {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.up-card {
+  width: 318px;
+  height: 72px;
+  border-radius: 18px;
+  background-color: rgba(255,255,255,0.08);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  flex-direction: row;
+  align-items: center;
+  padding: 8px;
+}
+.face {
+  width: 52px;
+  height: 52px;
+  border-radius: 26px;
+  object-fit: cover;
+}
+.up-info {
+  width: 174px;
+  margin-left: 10px;
+  flex-direction: column;
+}
+.name {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.stat {
+  color: #fb7299;
+  font-size: 12px;
+  margin-top: 6px;
+}
+.follow-btn {
+  width: 64px;
+  height: 30px;
+  border-radius: 15px;
+  background-color: #fb7299;
+  justify-content: center;
+  align-items: center;
+}
+.follow-text {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: bold;
+}
+.intro-card {
+  width: 318px;
+  height: 54px;
+  margin-top: 5px;
+  border-radius: 14px;
+  background-color: rgba(255,255,255,0.08);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  flex-direction: column;
+  padding: 6px 8px;
+}
+.intro-title {
+  color: #fb7299;
+  font-size: 11px;
+  font-weight: bold;
+}
+.intro-text {
+  color: rgba(255,255,255,0.75);
+  font-size: 10px;
+  margin-top: 3px;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.status {
+  width: 318px;
+  color: rgba(255,255,255,0.4);
+  font-size: 10px;
+  text-align: center;
+  margin-top: 5px;
+}
+.video-item {
+  width: 318px;
+  height: 54px;
+  margin-top: 4px;
+  border-radius: 12px;
+  background-color: rgba(255,255,255,0.08);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  flex-direction: row;
+  align-items: center;
+  padding: 4px;
+}
+.cover {
+  width: 72px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.video-info {
+  width: 230px;
+  margin-left: 8px;
+  flex-direction: column;
+}
+.video-title {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: bold;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.video-stat {
+  color: rgba(255,255,255,0.5);
+  font-size: 10px;
+  margin-top: 3px;
+}
+.no-video {
+  width: 318px;
+  height: 54px;
+  margin-top: 4px;
+  border-radius: 12px;
+  background-color: rgba(255,255,255,0.08);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  justify-content: center;
+  align-items: center;
+}
+.no-video-text {
+  color: rgba(255,255,255,0.45);
+  font-size: 13px;
+}
+</style>

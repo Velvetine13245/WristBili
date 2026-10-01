@@ -1,0 +1,252 @@
+<import name="input-method" src="../components/InputMethod/InputMethod.ux"></import>
+
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back" onclick="back"><text class="back-text">‹</text></div>
+      <text class="title">发评论</text>
+    </div>
+
+    <div class="input-box" onclick="showKeyboard">
+      <text class="input-text">{{commentText}}</text>
+      <text class="cursor" if="{{showCursor}}">|</text>
+    </div>
+
+    <div class="reply-actions">
+      <div class="reply-btn" onclick="doClear"><text class="reply-btn-text">清空</text></div>
+      <div class="reply-btn pink" onclick="doSubmit"><text class="reply-btn-text white">发送</text></div>
+    </div>
+
+    <input-method
+      hide="{{!keyboardShow}}"
+      keyboardtype="QWERTY"
+      maxlength="5"
+      screentype="rect"
+      vibratemode="short"
+      @complete="onInputComplete"
+      @delete="onInputDelete"
+    ></input-method>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetchBridge from '../common/scripts/fetchbridge'
+import storage from '@system.storage'
+
+export default {
+  private: {
+    bvid: '',
+    aid: '',
+    commentText: '',
+    showCursor: true,
+    cursorTimer: null,
+    keyboardShow: true
+  },
+  onInit() {
+    var self = this
+    this.cursorTimer = setInterval(function() {
+      self.showCursor = !self.showCursor
+    }, 600)
+    this.loadAid()
+  },
+  onShow() {
+  },
+  loadAid() {
+    var self = this
+    if (!this.bvid) {
+      return
+    }
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/view?bvid=' + this.bvid,
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.data && data.data.aid) {
+          self.aid = '' + data.data.aid
+        }
+      },
+      fail: function() {}
+    })
+  },
+  onInputComplete(evt) {
+    var content = evt.detail.content || ''
+    this.commentText = this.commentText + content
+  },
+  onInputDelete() {
+    if (this.commentText.length > 0) {
+      this.commentText = this.commentText.substring(0, this.commentText.length - 1)
+    }
+  },
+  showKeyboard() {
+    this.keyboardShow = true
+  },
+  doClear() {
+    this.commentText = ''
+  },
+  doSubmit() {
+    var self = this
+    if (!this.commentText || this.commentText.trim().length === 0) {
+      return
+    }
+    if (!this.aid) {
+      return
+    }
+    var msg = this.commentText.trim()
+    storage.get({
+      key: 'bili_cookie',
+      success: function(data) {
+        var cookie = data || ''
+        var csrf = self.getCsrf(cookie)
+        if (!cookie || cookie.length < 10 || !csrf) {
+          return
+        }
+        // 使用 HyperBilibili 移植的发评论接口
+        self.sendComment(cookie, csrf, msg)
+      },
+      fail: function() {}
+    })
+  },
+  sendComment(cookie, csrf, msg) {
+    var self = this
+    // HyperBilibili 接口格式：x/v2/reply/add + message + plat=1 + csrf
+    var body = 'type=1&oid=' + this.aid + '&message=' + encodeURIComponent(msg) + '&plat=1&csrf=' + csrf
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/v2/reply/add',
+      method: 'POST',
+      data: body,
+      header: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cookie': cookie,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://www.bilibili.com/video/' + this.bvid
+      },
+      responseType: 'json',
+      success: function(res) {
+        var r = res.data
+        if (typeof r === 'string') {
+          r = JSON.parse(r)
+        }
+        if (r && r.code === 0) {
+          self.commentText = ''
+        }
+      },
+      fail: function() {}
+    })
+  },
+  getCsrf(cookie) {
+    var parts = cookie.split(';')
+    var i = 0
+    for (i = 0; i < parts.length; i++) {
+      var p = parts[i].trim()
+      if (p.indexOf('bili_jct=') === 0) {
+        return p.substring(9)
+      }
+    }
+    return ''
+  },
+  back() {
+    if (this.cursorTimer) {
+      clearInterval(this.cursorTimer)
+      this.cursorTimer = null
+    }
+    router.back()
+  },
+  onDestroy() {
+    if (this.cursorTimer) {
+      clearInterval(this.cursorTimer)
+      this.cursorTimer = null
+    }
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  height: 480px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_comment.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 6px 8px;
+}
+.header {
+  width: 318px;
+  height: 38px;
+  flex-direction: row;
+  align-items: center;
+}
+.back {
+  width: 34px;
+  height: 34px;
+  justify-content: center;
+  align-items: center;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 30px;
+}
+.title {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.input-box {
+  width: 318px;
+  height: 52px;
+  margin-top: 6px;
+  border-radius: 14px;
+  background-color: rgba(255,255,255,0.08);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  flex-direction: row;
+  padding: 8px;
+  align-items: center;
+}
+.input-text {
+  flex: 1;
+  color: #ffffff;
+  font-size: 14px;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.cursor {
+  color: #fb7299;
+  font-size: 16px;
+  font-weight: bold;
+}
+.reply-actions {
+  width: 318px;
+  height: 38px;
+  margin-top: 6px;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.reply-btn {
+  width: 152px;
+  height: 36px;
+  border-radius: 18px;
+  background-color: #000000;
+  justify-content: center;
+  align-items: center;
+}
+.reply-btn-text {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+}
+.pink {
+  background-color: #fb7299;
+}
+.white {
+  color: #ffffff;
+}
+</style>

@@ -1,0 +1,689 @@
+<import name="input-method" src="../components/InputMethod/InputMethod.ux"></import>
+
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back-btn" onclick="back">
+        <text class="back-text">‹</text>
+      </div>
+      <image class="header-avatar" src="{{targetFace}}" />
+      <text class="header-name">{{targetName}}</text>
+    </div>
+
+    <text class="status">{{status}}</text>
+
+    <list class="msg-list" id="msgScroll" if="{{!showInput && msgList.length > 0}}">
+      <list-item type="msgrow" class="msg-item" for="{{msg in msgList}}">
+        <div class="msg-row {{msg.isMe ? 'msg-right' : 'msg-left'}}">
+          <image class="msg-avatar" src="{{msg.face}}" if="{{!msg.isMe}}" />
+          <div class="msg-bubble {{msg.isMe ? 'bubble-me' : 'bubble-other'}}">
+            <text class="msg-text">{{msg.text}}</text>
+          </div>
+          <image class="msg-avatar" src="{{msg.face}}" if="{{msg.isMe}}" />
+        </div>
+      </list-item>
+    </list>
+    <text class="empty-hint" if="{{!showInput && msgList.length === 0}}">暂无消息记录，发送第一条私信吧</text>
+
+    <div class="input-panel" if="{{showInput}}">
+      <div class="input-box">
+        <text class="input-text">{{inputText}}</text>
+        <text class="cursor" if="{{showCursor}}">|</text>
+      </div>
+      <div class="input-actions">
+        <div class="action-btn clear-btn" onclick="doClear">
+          <text class="action-text">清空</text>
+        </div>
+        <div class="action-btn send-btn" onclick="sendMsg">
+          <text class="action-text white">发送</text>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-bar" if="{{!showInput}}" onclick="toggleInput">
+      <text class="bottom-text">写私信...</text>
+    </div>
+
+    <input-method
+      hide="{{!showInput}}"
+      keyboardtype="QWERTY"
+      maxlength="5"
+      screentype="rect"
+      vibratemode="short"
+      @complete="onInputComplete"
+      @delete="onInputDelete"
+    ></input-method>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetch from '@system.fetch'
+import storage from '@system.storage'
+
+export default {
+  private: {
+    targetName: '私信用户',
+    targetFace: '/common/images/icon.png',
+    targetUid: '',
+    myUid: '',
+    myFace: '/common/images/icon.png',
+    status: '正在加载消息...',
+    msgList: [],
+    showInput: false,
+    inputText: '',
+    showCursor: true,
+    cursorTimer: null,
+    loadingMore: false,
+    endSeqno: 0,
+    minSeqno: 0,
+    maxSeqno: 0,
+    cookie: '',
+    csrf: '',
+    refreshTimer: null,
+    retryCount: 0
+  },
+  onInit() {
+    var self = this
+    this.targetName = this.targetName || '私信用户'
+    this.targetFace = this.targetFace || '/common/images/icon.png'
+    this.targetUid = this.targetUid || ''
+    this.cursorTimer = setInterval(function() {
+      self.showCursor = !self.showCursor
+    }, 600)
+    storage.get({
+      key: 'bili_cookie',
+      success: function(cookie) {
+        self.cookie = cookie || ''
+        self.myUid = self.getCookieValue(cookie, 'DedeUserID')
+        self.csrf = self.getCsrf(cookie)
+        self.loadMyFace()
+        self.loadMessages()
+        self.refreshTimer = setInterval(function() {
+          self.loadNewMessages()
+        }, 10000)
+      },
+      fail: function() {
+        self.status = '未登录，无法查看私信'
+      }
+    })
+  },
+  onDestroy() {
+    if (this.cursorTimer) {
+      clearInterval(this.cursorTimer)
+      this.cursorTimer = null
+    }
+    if (this.refreshTimer) {
+      clearInterval(this.refreshTimer)
+      this.refreshTimer = null
+    }
+  },
+  getCsrf(cookie) {
+    var parts = cookie.split(';')
+    var i = 0
+    for (i = 0; i < parts.length; i++) {
+      var p = parts[i].trim()
+      if (p.indexOf('bili_jct=') === 0) {
+        return p.substring(9)
+      }
+    }
+    return ''
+  },
+  getCookieValue(cookie, key) {
+    var parts = cookie.split(';')
+    var i = 0
+    for (i = 0; i < parts.length; i++) {
+      var p = parts[i].trim()
+      if (p.indexOf(key + '=') === 0) {
+        return p.substring(key.length + 1)
+      }
+    }
+    return ''
+  },
+  cleanImageUrl(url) {
+    if (!url || typeof url !== 'string') {
+      return '/common/images/icon.png'
+    }
+    if (url.indexOf('//') === 0) {
+      url = 'https:' + url
+    }
+    if (url.indexOf('@') > 0) {
+      url = url.split('@')[0]
+    }
+    if (url.indexOf('hdslb.com') > 0 || url.indexOf('biliimg.com') > 0) {
+      url = url + '@32w_32h_1e_1c.jpg'
+    }
+    return url
+  },
+  generateDevId() {
+    var template = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
+    var result = ''
+    var i = 0
+    for (i = 0; i < template.length; i++) {
+      var c = template[i]
+      if (c === 'x' || c === 'y') {
+        var r = Math.floor(Math.random() * 16)
+        var v = c === 'x' ? r : (r & 0x3 | 0x8)
+        result += v.toString(16).toUpperCase()
+      } else {
+        result += c
+      }
+    }
+    return result
+  },
+  scrollToBottom() {
+    var self = this
+    if (this.msgList.length === 0) return
+    setTimeout(function() {
+      try {
+        var el = self.$element('msgScroll')
+        if (el) {
+          el.scrollTo({ index: self.msgList.length - 1 })
+        }
+      } catch (e) {}
+    }, 150)
+  },
+  loadMyFace() {
+    var self = this
+    if (!this.myUid) return
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/card?mid=' + this.myUid,
+      header: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
+      responseType: 'json',
+      timeout: 12000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.code === 0 && data.data && data.data.card) {
+          var face = data.data.card.face || ''
+          if (face) {
+            self.myFace = self.cleanImageUrl(face)
+          }
+        }
+      },
+      fail: function() {}
+    })
+  },
+  parseMsgContent(msg, msgType) {
+    if (!msg && msg !== 0) return ''
+    if (msgType !== undefined && msgType !== null) {
+      var t = parseInt(msgType)
+      if (t === 2) return '[图片]'
+      if (t === 5) return '[撤回消息]'
+      if (t === 12 || t === 13) return '[系统通知]'
+      if (t === 10) return '[系统消息]'
+      if (t === 7) return '[撤回消息]'
+      if (t === 306) return '[系统通知]'
+    }
+    if (typeof msg === 'string') {
+      try {
+        var obj = JSON.parse(msg)
+        if (typeof obj.content === 'string') {
+          return obj.content
+        }
+        if (obj.content && typeof obj.content === 'object') {
+          if (typeof obj.content.content === 'string') return obj.content.content
+          if (typeof obj.content.text === 'string') return obj.content.text
+        }
+        if (typeof obj.text === 'string') {
+          return obj.text
+        }
+        return msg
+      } catch (e) {
+        return msg
+      }
+    }
+    if (typeof msg === 'object') {
+      if (typeof msg.content === 'string') {
+        return msg.content
+      }
+      if (msg.content && typeof msg.content === 'object') {
+        if (typeof msg.content.content === 'string') return msg.content.content
+        if (typeof msg.content.text === 'string') return msg.content.text
+      }
+      if (typeof msg.text === 'string') {
+        return msg.text
+      }
+    }
+    return ''
+  },
+  loadMessages() {
+    var self = this
+    if (!this.targetUid || !this.cookie) {
+      this.status = '缺少用户信息，无法加载消息'
+      return
+    }
+    this.status = '正在加载消息...'
+    var url = 'https://api.vc.bilibili.com/svr_sync/v1/svr_sync/fetch_session_msgs?sender_device_id=1&talker_id=' + this.targetUid + '&session_type=1&size=20&build=0&mobi_app=web'
+    fetch.fetch({
+      url: url,
+      header: {
+        'Cookie': this.cookie,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://message.bilibili.com/'
+      },
+      responseType: 'json',
+      timeout: 30000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data)
+          } catch (e) {
+            self.status = '消息解析失败'
+            return
+          }
+        }
+        if (data && data.code === 0 && data.data) {
+          if (data.data.min_seqno) self.minSeqno = data.data.min_seqno
+          if (data.data.max_seqno) self.maxSeqno = data.data.max_seqno
+          var msgs = data.data.messages || []
+          if (msgs.length > 0) {
+            self.endSeqno = msgs[msgs.length - 1].msg_seqno || 0
+          }
+          var parsed = []
+          var i = 0
+          for (i = 0; i < msgs.length; i++) {
+            var m = msgs[i]
+            var isMe = (m.sender_uid + '') === self.myUid
+            var text = self.parseMsgContent(m.content, m.msg_type)
+            var face = isMe ? self.myFace : self.targetFace
+            parsed.push({
+              isMe: isMe,
+              text: text,
+              face: face,
+              seqno: m.msg_seqno || 0
+            })
+          }
+          self.msgList = parsed
+          self.retryCount = 0
+          self.status = '共 ' + parsed.length + ' 条消息'
+          self.scrollToBottom()
+        } else if (data && data.code === 0) {
+          self.status = '暂无消息记录'
+          self.retryCount = 0
+        } else {
+          self.status = '加载失败(' + (data ? data.code : '?') + '): ' + (data && data.message ? data.message : '')
+          self.retryLoad()
+        }
+      },
+      fail: function() {
+        self.status = '消息加载失败，正在重试...'
+        self.retryLoad()
+      }
+    })
+  },
+  retryLoad() {
+    var self = this
+    if (this.retryCount >= 2) {
+      this.status = '消息加载失败，请返回重试'
+      return
+    }
+    this.retryCount++
+    setTimeout(function() {
+      self.loadMessages()
+    }, 2000)
+  },
+  loadNewMessages() {
+    var self = this
+    if (!this.targetUid || !this.cookie) {
+      return
+    }
+    var url = 'https://api.vc.bilibili.com/svr_sync/v1/svr_sync/fetch_session_msgs?sender_device_id=1&talker_id=' + this.targetUid + '&session_type=1&size=20&build=0&mobi_app=web'
+    if (this.endSeqno > 0) {
+      url += '&begin_seqno=' + (this.endSeqno + 1)
+    }
+    fetch.fetch({
+      url: url,
+      header: {
+        'Cookie': this.cookie,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://message.bilibili.com/'
+      },
+      responseType: 'json',
+      timeout: 15000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.code === 0 && data.data && data.data.messages && data.data.messages.length > 0) {
+          var msgs = data.data.messages
+          var newItems = []
+          var i = 0
+          for (i = 0; i < msgs.length; i++) {
+            var m = msgs[i]
+            var isMe = (m.sender_uid + '') === self.myUid
+            var text = self.parseMsgContent(m.content, m.msg_type)
+            var face = isMe ? self.myFace : self.targetFace
+            newItems.push({
+              isMe: isMe,
+              text: text,
+              face: face,
+              seqno: m.msg_seqno || 0
+            })
+            self.endSeqno = m.msg_seqno || self.endSeqno
+          }
+          if (newItems.length > 0) {
+            self.msgList = self.msgList.concat(newItems)
+            self.scrollToBottom()
+          }
+        }
+      },
+      fail: function() {}
+    })
+  },
+  toggleInput() {
+    this.showInput = !this.showInput
+    if (this.showInput) {
+      this.inputText = ''
+    }
+  },
+  onInputComplete(evt) {
+    var content = evt.detail.content || ''
+    this.inputText = this.inputText + content
+  },
+  onInputDelete() {
+    if (this.inputText.length > 0) {
+      this.inputText = this.inputText.substring(0, this.inputText.length - 1)
+    }
+  },
+  doClear() {
+    this.inputText = ''
+  },
+  sendMsg() {
+    var self = this
+    if (!this.inputText || this.inputText.trim().length === 0) {
+      this.status = '请先输入消息内容'
+      return
+    }
+    if (!this.targetUid) {
+      this.status = '缺少接收者ID'
+      return
+    }
+    if (!this.csrf || !this.myUid) {
+      this.status = '登录信息不完整，无法发送'
+      return
+    }
+    var msg = this.inputText.trim()
+    var ts = Math.floor(new Date().getTime() / 1000)
+    var devId = this.generateDevId()
+    this.status = '正在发送...'
+    var contentJson = JSON.stringify({ content: msg })
+    var body = 'msg[sender_uid]=' + encodeURIComponent(this.myUid) +
+      '&msg[receiver_id]=' + encodeURIComponent(this.targetUid) +
+      '&msg[receiver_type]=1' +
+      '&msg[msg_type]=1' +
+      '&msg[dev_id]=' + encodeURIComponent(devId) +
+      '&msg[timestamp]=' + ts +
+      '&msg[content]=' + encodeURIComponent(contentJson) +
+      '&msg[msg_status]=0' +
+      '&msg[new_face_version]=0' +
+      '&from_firework=0' +
+      '&build=0' +
+      '&mobi_app=web' +
+      '&csrf=' + encodeURIComponent(this.csrf)
+    fetch.fetch({
+      url: 'https://api.vc.bilibili.com/web_im/v1/web_im/send_msg',
+      method: 'POST',
+      data: body,
+      header: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cookie': this.cookie,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://message.bilibili.com/'
+      },
+      responseType: 'json',
+      timeout: 15000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data)
+          } catch (e) {
+            self.status = '发送响应解析失败'
+            return
+          }
+        }
+        if (data && data.code === 0) {
+          var sentMsg = {
+            isMe: true,
+            text: msg,
+            face: self.myFace,
+            seqno: (data.data && data.data.msg_key) ? data.data.msg_key : 0
+          }
+          self.msgList = self.msgList.concat([sentMsg])
+          self.inputText = ''
+          self.showInput = false
+          self.status = '已发送'
+          self.scrollToBottom()
+        } else {
+          var errMsg = '未知错误'
+          if (data && data.message) errMsg = data.message
+          else if (data && data.msg) errMsg = data.msg
+          self.status = '发送失败(' + (data ? data.code : '?') + '): ' + errMsg
+        }
+      },
+      fail: function() {
+        self.status = '发送请求失败，请检查网络'
+      }
+    })
+  },
+  back() {
+    if (this.showInput) {
+      this.showInput = false
+      return
+    }
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  height: 480px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_blue.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 8px;
+}
+.header {
+  width: 320px;
+  height: 44px;
+  flex-direction: row;
+  align-items: center;
+  border-radius: 16px;
+  background-color: rgba(255,255,255,0.08);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  padding: 0 8px;
+  flex-shrink: 0;
+}
+.back-btn {
+  width: 32px;
+  height: 32px;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 30px;
+}
+.header-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  margin-left: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.header-name {
+  flex: 1;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: bold;
+  margin-left: 8px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.status {
+  width: 310px;
+  color: #fb7299;
+  font-size: 10px;
+  text-align: center;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.msg-list {
+  width: 320px;
+  height: 350px;
+  flex-direction: column;
+  padding: 4px 0;
+}
+.msg-item {
+  width: 320px;
+  height: 56px;
+  justify-content: center;
+}
+.msg-row {
+  width: 310px;
+  flex-direction: row;
+  align-items: flex-start;
+}
+.msg-left {
+  justify-content: flex-start;
+}
+.msg-right {
+  justify-content: flex-end;
+}
+.msg-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.msg-bubble {
+  max-width: 220px;
+  border-radius: 14px;
+  padding: 6px 10px;
+  margin: 0 6px;
+}
+.bubble-me {
+  background-color: #fb7299;
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.15);
+}
+.bubble-other {
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+}
+.msg-text {
+  color: #ffffff;
+  font-size: 13px;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.loading-hint {
+  width: 310px;
+  color: rgba(255,255,255,0.4);
+  font-size: 11px;
+  text-align: center;
+  margin-top: 8px;
+}
+.empty-hint {
+  width: 310px;
+  color: rgba(255,255,255,0.3);
+  font-size: 12px;
+  text-align: center;
+  margin-top: 40px;
+}
+.input-panel {
+  width: 320px;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+.input-box {
+  width: 310px;
+  height: 42px;
+  border-radius: 14px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.15);
+  flex-direction: row;
+  padding: 8px;
+  align-items: center;
+}
+.input-text {
+  flex: 1;
+  color: #ffffff;
+  font-size: 13px;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.cursor {
+  color: #fb7299;
+  font-size: 16px;
+  font-weight: bold;
+}
+.input-actions {
+  width: 310px;
+  height: 38px;
+  margin-top: 6px;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.action-btn {
+  width: 148px;
+  height: 36px;
+  border-radius: 18px;
+  justify-content: center;
+  align-items: center;
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.15);
+}
+.clear-btn {
+  background-color: rgba(255,255,255,0.12);
+}
+.send-btn {
+  background-color: #fb7299;
+}
+.action-text {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+}
+.white {
+  color: #ffffff;
+}
+.bottom-bar {
+  width: 320px;
+  height: 38px;
+  border-radius: 19px;
+  background-color: rgba(255,255,255,0.1);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  justify-content: center;
+  align-items: center;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+.bottom-text {
+  color: rgba(255,255,255,0.5);
+  font-size: 13px;
+}
+</style>

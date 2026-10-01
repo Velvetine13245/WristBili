@@ -1,0 +1,845 @@
+<import name="input-method" src="../components/InputMethod/InputMethod.ux"></import>
+
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back" onclick="back">
+        <text class="back-text">‹</text>
+      </div>
+      <text class="title">搜索</text>
+    </div>
+
+    <div class="search-actions">
+      <div class="search-btn" onclick="back"><text class="search-btn-text">返回</text></div>
+      <div class="search-btn pink" onclick="doSearch"><text class="search-btn-text white">搜索发送</text></div>
+    </div>
+
+    <div class="input-box" onclick="showKeyboard">
+      <text class="input-text">{{keyword}}</text>
+      <text class="cursor" if="{{showCursor}}">|</text>
+    </div>
+
+    <div class="tab-row">
+      <div class="tab" onclick="switchVideo"><text class="tab-text {{videoTabClass}}">搜视频</text></div>
+      <div class="tab" onclick="switchUp"><text class="tab-text {{upTabClass}}">搜UP主</text></div>
+    </div>
+
+    <text class="status">{{status}}</text>
+
+    <div class="history-section" if="{{showHistory}}">
+      <text class="history-title">历史搜索</text>
+      <div class="history-tags">
+        <div class="history-tag" onclick="searchFromHistory1" if="{{h1Show}}"><text class="history-tag-text">{{h1}}</text></div>
+        <div class="history-tag" onclick="searchFromHistory2" if="{{h2Show}}"><text class="history-tag-text">{{h2}}</text></div>
+        <div class="history-tag" onclick="searchFromHistory3" if="{{h3Show}}"><text class="history-tag-text">{{h3}}</text></div>
+        <div class="history-tag" onclick="searchFromHistory4" if="{{h4Show}}"><text class="history-tag-text">{{h4}}</text></div>
+        <div class="history-tag" onclick="searchFromHistory5" if="{{h5Show}}"><text class="history-tag-text">{{h5}}</text></div>
+        <div class="history-tag" onclick="searchFromHistory6" if="{{h6Show}}"><text class="history-tag-text">{{h6}}</text></div>
+        <div class="history-tag" onclick="searchFromHistory7" if="{{h7Show}}"><text class="history-tag-text">{{h7}}</text></div>
+        <div class="history-tag" onclick="searchFromHistory8" if="{{h8Show}}"><text class="history-tag-text">{{h8}}</text></div>
+      </div>
+      <div class="history-clear" onclick="clearHistory"><text class="history-clear-text">清除历史</text></div>
+    </div>
+
+    <div class="video-results" if="{{videoMode}}">
+      <div class="result-card" onclick="openResult1" if="{{r1Show}}">
+        <div class="thumb"><image class="thumb-img" src="{{r1Pic}}" /><text class="cover-tag">{{r1Tag}}</text></div>
+        <text class="result-title">{{r1Title}}</text>
+      </div>
+      <div class="result-card" onclick="openResult2" if="{{r2Show}}">
+        <div class="thumb"><image class="thumb-img" src="{{r2Pic}}" /><text class="cover-tag">{{r2Tag}}</text></div>
+        <text class="result-title">{{r2Title}}</text>
+      </div>
+      <div class="result-card" onclick="openResult3" if="{{r3Show}}">
+        <div class="thumb"><image class="thumb-img" src="{{r3Pic}}" /><text class="cover-tag">{{r3Tag}}</text></div>
+        <text class="result-title">{{r3Title}}</text>
+      </div>
+      <div class="result-card" onclick="openResult4" if="{{r4Show}}">
+        <div class="thumb"><image class="thumb-img" src="{{r4Pic}}" /><text class="cover-tag">{{r4Tag}}</text></div>
+        <text class="result-title">{{r4Title}}</text>
+      </div>
+      <div class="result-card" onclick="openResult5" if="{{r5Show}}">
+        <div class="thumb"><image class="thumb-img" src="{{r5Pic}}" /><text class="cover-tag">{{r5Tag}}</text></div>
+        <text class="result-title">{{r5Title}}</text>
+      </div>
+      <div class="result-card" onclick="openResult6" if="{{r6Show}}">
+        <div class="thumb"><image class="thumb-img" src="{{r6Pic}}" /><text class="cover-tag">{{r6Tag}}</text></div>
+        <text class="result-title">{{r6Title}}</text>
+      </div>
+      <div class="result-card" onclick="openResult7" if="{{r7Show}}">
+        <div class="thumb"><image class="thumb-img" src="{{r7Pic}}" /><text class="cover-tag">{{r7Tag}}</text></div>
+        <text class="result-title">{{r7Title}}</text>
+      </div>
+      <div class="result-card" onclick="openResult8" if="{{r8Show}}">
+        <div class="thumb"><image class="thumb-img" src="{{r8Pic}}" /><text class="cover-tag">{{r8Tag}}</text></div>
+        <text class="result-title">{{r8Title}}</text>
+      </div>
+    </div>
+
+    <list class="up-results" if="{{upMode}}">
+      <list-item class="up-list-item" type="upcard" for="{{up in upResultList}}">
+        <div class="up-card" onclick="openUpFromList($idx)">
+          <image class="up-avatar" src="{{up.face}}" />
+          <div class="up-info">
+            <text class="up-name">{{up.name}}</text>
+            <text class="up-fans">粉丝 {{up.fans}}</text>
+          </div>
+        </div>
+      </list-item>
+    </list>
+
+    <input-method
+      hide="{{!keyboardShow}}"
+      keyboardtype="QWERTY"
+      maxlength="5"
+      screentype="rect"
+      vibratemode="short"
+      @complete="onInputComplete"
+      @delete="onInputDelete"
+    ></input-method>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetch from '@system.fetch'
+import storage from '@system.storage'
+
+export default {
+  private: {
+    keyword: '',
+    status: '输入关键词后搜索',
+    isSearching: false,
+    spinDeg: 0,
+    spinTimer: null,
+    showCursor: true,
+    keyboardShow: false,
+    cursorTimer: null,
+    searchType: 'video',
+    videoMode: true,
+    upMode: false,
+    videoTabClass: 'tab-active',
+    upTabClass: 'tab-normal',
+    results: [],
+    upResultList: [],
+    r1Show: false, r1Title: '', r1Bvid: '', r1Cid: '', r1Pic: '/common/images/icon.png', r1Tag: '搜索',
+    r2Show: false, r2Title: '', r2Bvid: '', r2Cid: '', r2Pic: '/common/images/icon.png', r2Tag: '搜索',
+    r3Show: false, r3Title: '', r3Bvid: '', r3Cid: '', r3Pic: '/common/images/icon.png', r3Tag: '搜索',
+    r4Show: false, r4Title: '', r4Bvid: '', r4Cid: '', r4Pic: '/common/images/icon.png', r4Tag: '搜索',
+    r5Show: false, r5Title: '', r5Bvid: '', r5Cid: '', r5Pic: '/common/images/icon.png', r5Tag: '搜索',
+    r6Show: false, r6Title: '', r6Bvid: '', r6Cid: '', r6Pic: '/common/images/icon.png', r6Tag: '搜索',
+    r7Show: false, r7Title: '', r7Bvid: '', r7Cid: '', r7Pic: '/common/images/icon.png', r7Tag: '搜索',
+    r8Show: false, r8Title: '', r8Bvid: '', r8Cid: '', r8Pic: '/common/images/icon.png', r8Tag: '搜索',
+    u1Show: false, u1Name: '', u1Mid: '', u1Face: '/common/images/icon.png', u1Fans: '-',
+    u2Show: false, u2Name: '', u2Mid: '', u2Face: '/common/images/icon.png', u2Fans: '-',
+    u3Show: false, u3Name: '', u3Mid: '', u3Face: '/common/images/icon.png', u3Fans: '-',
+    u4Show: false, u4Name: '', u4Mid: '', u4Face: '/common/images/icon.png', u4Fans: '-',
+    u5Show: false, u5Name: '', u5Mid: '', u5Face: '/common/images/icon.png', u5Fans: '-',
+    u6Show: false, u6Name: '', u6Mid: '', u6Face: '/common/images/icon.png', u6Fans: '-',
+    u7Show: false, u7Name: '', u7Mid: '', u7Face: '/common/images/icon.png', u7Fans: '-',
+    u8Show: false, u8Name: '', u8Mid: '', u8Face: '/common/images/icon.png', u8Fans: '-',
+    showHistory: true,
+    h1Show: false, h1: '',
+    h2Show: false, h2: '',
+    h3Show: false, h3: '',
+    h4Show: false, h4: '',
+    h5Show: false, h5: '',
+    h6Show: false, h6: '',
+    h7Show: false, h7: '',
+    h8Show: false, h8: '',
+  },
+  onInit() {
+    var self = this
+    this.cursorTimer = setInterval(function() {
+      self.showCursor = !self.showCursor
+    }, 600)
+    this.loadHistory()
+    if (this.keyword && this.keyword.length > 0) {
+      this.status = '来自热搜：' + this.keyword
+      this.doSearch()
+    }
+  },
+  onShow() {
+  },
+  onInputComplete(evt) {
+    var content = evt.detail.content || ''
+    this.keyword = this.keyword + content
+    if (content === ' ') {
+      this.doSearch()
+    }
+  },
+  onInputDelete() {
+    if (this.keyword.length > 0) {
+      this.keyword = this.keyword.substring(0, this.keyword.length - 1)
+    }
+  },
+  showKeyboard() {
+    this.keyboardShow = true
+  },
+  switchVideo() {
+    this.searchType = 'video'
+    this.videoMode = true
+    this.upMode = false
+    this.videoTabClass = 'tab-active'
+    this.upTabClass = 'tab-normal'
+    this.clearResults()
+    this.showHistory = true
+  },
+  switchUp() {
+    this.searchType = 'up'
+    this.videoMode = false
+    this.upMode = true
+    this.videoTabClass = 'tab-normal'
+    this.upTabClass = 'tab-active'
+    this.clearResults()
+    this.showHistory = true
+  },
+  clearResults() {
+    var i = 1
+    for (i = 1; i <= 8; i++) {
+      this['r' + i + 'Show'] = false
+      this['r' + i + 'Title'] = ''
+      this['r' + i + 'Bvid'] = ''
+      this['r' + i + 'Cid'] = ''
+      this['r' + i + 'Pic'] = '/common/images/icon.png'
+      this['r' + i + 'Tag'] = '搜索'
+      this['u' + i + 'Show'] = false
+      this['u' + i + 'Name'] = ''
+      this['u' + i + 'Mid'] = ''
+      this['u' + i + 'Face'] = '/common/images/icon.png'
+      this['u' + i + 'Fans'] = '-'
+    }
+  },
+  loadHistory() {
+    var self = this
+    storage.get({
+      key: 'bili_search_history',
+      success: function(data) {
+        var list = []
+        if (data) {
+          try {
+            list = JSON.parse(data)
+          } catch (e) {
+            list = []
+          }
+        }
+        var i = 0
+        for (i = 1; i <= 8; i++) {
+          self['h' + i + 'Show'] = false
+          self['h' + i] = ''
+        }
+        if (list && list.length > 0) {
+          var count = Math.min(8, list.length)
+          for (i = 0; i < count; i++) {
+            self['h' + (i + 1) + 'Show'] = true
+            self['h' + (i + 1)] = list[i]
+          }
+          self.showHistory = true
+        } else {
+          self.showHistory = true
+        }
+      },
+      fail: function() {
+        self.showHistory = true
+      }
+    })
+  },
+  saveHistory(kw) {
+    var self = this
+    storage.get({
+      key: 'bili_search_history',
+      success: function(data) {
+        var list = []
+        if (data) {
+          try {
+            list = JSON.parse(data)
+          } catch (e) {
+            list = []
+          }
+        }
+        var idx = list.indexOf(kw)
+        if (idx >= 0) {
+          list.splice(idx, 1)
+        }
+        list.unshift(kw)
+        if (list.length > 8) {
+          list = list.slice(0, 8)
+        }
+        storage.set({
+          key: 'bili_search_history',
+          value: JSON.stringify(list)
+        })
+      },
+      fail: function() {
+        var list = [kw]
+        storage.set({
+          key: 'bili_search_history',
+          value: JSON.stringify(list)
+        })
+      }
+    })
+  },
+  searchFromHistory(n) {
+    var kw = this['h' + n] || ''
+    if (kw) {
+      this.keyword = kw
+      this.doSearch()
+    }
+  },
+  searchFromHistory1() { this.searchFromHistory(1) },
+  searchFromHistory2() { this.searchFromHistory(2) },
+  searchFromHistory3() { this.searchFromHistory(3) },
+  searchFromHistory4() { this.searchFromHistory(4) },
+  searchFromHistory5() { this.searchFromHistory(5) },
+  searchFromHistory6() { this.searchFromHistory(6) },
+  searchFromHistory7() { this.searchFromHistory(7) },
+  searchFromHistory8() { this.searchFromHistory(8) },
+  clearHistory() {
+    var self = this
+    storage.delete({
+      key: 'bili_search_history',
+      success: function() {
+        var i = 0
+        for (i = 1; i <= 8; i++) {
+          self['h' + i + 'Show'] = false
+          self['h' + i] = ''
+        }
+        self.showHistory = true
+      },
+      fail: function() {}
+    })
+  },
+  doSearch() {
+    var self = this
+    if (!this.keyword || this.keyword.trim().length === 0) {
+      this.status = '请先输入关键词'
+      return
+    }
+    this.clearResults()
+    this.showHistory = false
+    this.keyboardShow = false
+    this.status = '正在搜索：' + this.keyword
+    this.startSpinner()
+    var kw = this.keyword.trim()
+    this.saveHistory(kw)
+    storage.get({
+      key: 'bili_cookie',
+      success: function(data) {
+        var cookie = data || ''
+        var header = {
+          'User-Agent': 'Mozilla/5.0'
+        }
+        if (cookie.length > 10) {
+          header['Cookie'] = cookie
+        }
+        self.trySearch(kw, header, 0)
+      },
+      fail: function() {
+        self.trySearch(kw, { 'User-Agent': 'Mozilla/5.0' }, 0)
+      }
+    })
+  },
+  startSpinner() {
+    var self = this
+    this.isSearching = true
+    if (this.spinTimer) {
+      clearInterval(this.spinTimer)
+    }
+    this.spinTimer = setInterval(function() {
+      self.spinDeg = self.spinDeg + 45
+    }, 100)
+  },
+  stopSpinner() {
+    this.isSearching = false
+    if (this.spinTimer) {
+      clearInterval(this.spinTimer)
+      this.spinTimer = null
+    }
+  },
+  buildSearchUrl(kw, index) {
+    var encoded = encodeURIComponent(kw)
+    if (this.searchType === 'up') {
+      if (index === 0) {
+        return 'https://api.bilibili.com/x/web-interface/search/type?search_type=bili_user&keyword=' + encoded + '&page=1&page_size=8'
+      }
+      return 'https://api.bilibili.com/x/web-interface/search/all/v2?keyword=' + encoded + '&page=1&page_size=8'
+    }
+    if (index === 0) {
+      return 'https://api.bilibili.com/x/web-interface/search/type?search_type=video&keyword=' + encoded + '&page=1&page_size=8'
+    }
+    return 'https://api.bilibili.com/x/web-interface/search/all/v2?keyword=' + encoded + '&page=1&page_size=8'
+  },
+  trySearch(kw, header, index) {
+    var self = this
+    var names = this.searchType === 'up' ? ['UP主接口', '综合接口'] : ['视频接口', '综合接口']
+    this.status = '正在使用' + names[index] + '搜索...'
+    fetch.fetch({
+      url: this.buildSearchUrl(kw, index),
+      header: header,
+      responseType: 'json',
+      success: function(res) {
+        var data2 = res.data
+        if (typeof data2 === 'string') {
+          data2 = JSON.parse(data2)
+        }
+        if (self.searchType === 'up') {
+          var list = self.extractUpResults(data2)
+          if (list && list.length > 0) {
+            self.applyUpResults(list)
+            self.status = '找到 ' + (list.length > 8 ? 8 : list.length) + ' 位UP主'
+          } else if (index < 1) {
+            self.status = '主接口无结果，切换备用接口...'
+            self.trySearch(kw, header, index + 1)
+          } else {
+            self.status = '两个接口都没有UP主结果'
+          }
+        } else {
+          var list = self.extractVideoResults(data2)
+          if (list && list.length > 0) {
+            self.applyVideoResults(list)
+            self.status = '找到 ' + (list.length > 8 ? 8 : list.length) + ' 个视频'
+          } else if (index < 1) {
+            self.status = '主接口无结果，切换备用接口...'
+            self.trySearch(kw, header, index + 1)
+          } else {
+            self.status = '两个接口都没有视频结果'
+          }
+        }
+      },
+      fail: function() {
+        if (index < 1) {
+          self.status = '主接口失败，切换备用接口...'
+          self.trySearch(kw, header, index + 1)
+        } else {
+          self.stopSpinner()
+          self.status = '搜索失败，备用接口也不可用'
+        }
+      }
+    })
+  },
+  extractVideoResults(data) {
+    if (!data || !data.data || !data.data.result) {
+      return []
+    }
+    var result = data.data.result
+    if (!result || result.length === 0) {
+      return []
+    }
+    if (result[0] && result[0].result_type) {
+      var i = 0
+      for (i = 0; i < result.length; i++) {
+        if (result[i].result_type === 'video' && result[i].data && result[i].data.length > 0) {
+          return result[i].data
+        }
+      }
+      return []
+    }
+    return result
+  },
+  extractUpResults(data) {
+    if (!data || !data.data || !data.data.result) {
+      return []
+    }
+    var result = data.data.result
+    if (!result || result.length === 0) {
+      return []
+    }
+    if (result[0] && result[0].result_type) {
+      var i = 0
+      for (i = 0; i < result.length; i++) {
+        if (result[i].result_type === 'bili_user' && result[i].data && result[i].data.length > 0) {
+          return result[i].data
+        }
+      }
+      return []
+    }
+    return result
+  },
+  formatNum(num) {
+    if (!num) {
+      return '0'
+    }
+    if (num > 10000) {
+      return (num / 10000).toFixed(1) + '万'
+    }
+    return '' + num
+  },
+  applyVideoResults(list) {
+    this.stopSpinner()
+    var count = Math.min(8, list.length)
+    var i = 0
+    for (i = 0; i < count; i++) {
+      var n = i + 1
+      var item = list[i]
+      this['r' + n + 'Show'] = true
+      this['r' + n + 'Title'] = item.title ? item.title.replace(/<[^>]+>/g, '') : 'B站视频'
+      this['r' + n + 'Bvid'] = item.bvid || ''
+      this['r' + n + 'Cid'] = ''
+      this['r' + n + 'Tag'] = this.formatVideoTag(item)
+      var pic = item.pic || '/common/images/icon.png'
+      if (pic.indexOf('//') === 0) {
+        pic = 'https:' + pic
+      }
+      if (pic.indexOf('hdslb.com') > 0 || pic.indexOf('biliimg.com') > 0) {
+        pic = pic + '@336w_210h_1e_1c.jpg'
+      }
+      this['r' + n + 'Pic'] = pic
+    }
+  },
+  formatVideoTag(item) {
+    var view = item.play || item.view || item.video_review || 0
+    if (item.stat && item.stat.view) {
+      view = item.stat.view
+    }
+    if (view > 10000) {
+      return (view / 10000).toFixed(1) + '万播放'
+    }
+    if (view > 0) {
+      return view + '播放'
+    }
+    return '搜索'
+  },
+  applyUpResults(list) {
+    this.stopSpinner()
+    var count = Math.min(8, list.length)
+    var arr = []
+    var i = 0
+    for (i = 0; i < count; i++) {
+      var item = list[i]
+      var face = item.upic || item.face || '/common/images/icon.png'
+      if (face.indexOf('//') === 0) {
+        face = 'https:' + face
+      }
+      if (face.indexOf('@') > 0) {
+        face = face.split('@')[0]
+      }
+      if (face.indexOf('hdslb.com') > 0 || face.indexOf('biliimg.com') > 0) {
+        face = face + '@48w_48h_1e_1c.jpg'
+      }
+      arr.push({
+        name: item.uname || 'UP主',
+        mid: '' + (item.mid || ''),
+        fans: this.formatNum(item.fans || 0),
+        face: face
+      })
+    }
+    this.upResultList = arr
+  },
+  openResult(n) {
+    router.push({ uri: '/video', params: { title: this['r' + n + 'Title'], bvid: this['r' + n + 'Bvid'], cid: this['r' + n + 'Cid'], stat: '搜索结果', pic: this['r' + n + 'Pic'] } })
+  },
+  openUp(n) {
+    router.push({ uri: '/uphome', params: { mid: this['u' + n + 'Mid'], name: this['u' + n + 'Name'], face: this['u' + n + 'Face'] } })
+  },
+  openUpFromList(idx) {
+    var item = this.upResultList[idx]
+    if (item) {
+      router.push({ uri: '/uphome', params: { mid: item.mid, name: item.name, face: item.face } })
+    }
+  },
+  openResult1() { this.openResult(1) },
+  openResult2() { this.openResult(2) },
+  openResult3() { this.openResult(3) },
+  openResult4() { this.openResult(4) },
+  openResult5() { this.openResult(5) },
+  openResult6() { this.openResult(6) },
+  openResult7() { this.openResult(7) },
+  openResult8() { this.openResult(8) },
+  openUp1() { this.openUp(1) },
+  openUp2() { this.openUp(2) },
+  openUp3() { this.openUp(3) },
+  openUp4() { this.openUp(4) },
+  openUp5() { this.openUp(5) },
+  openUp6() { this.openUp(6) },
+  openUp7() { this.openUp(7) },
+  openUp8() { this.openUp(8) },
+  back() {
+    if (this.cursorTimer) {
+      clearInterval(this.cursorTimer)
+      this.cursorTimer = null
+    }
+    router.back()
+  },
+  onDestroy() {
+    if (this.cursorTimer) {
+      clearInterval(this.cursorTimer)
+      this.cursorTimer = null
+    }
+    this.stopSpinner()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_blue.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 8px;
+
+}
+.header {
+  width: 318px;
+  height: 34px;
+  flex-direction: row;
+  align-items: center;
+}
+.back {
+  width: 32px;
+  height: 32px;
+  justify-content: center;
+  align-items: center;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 28px;
+}
+.title {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: bold;
+  margin-left: 6px;
+}
+.search-actions {
+  width: 318px;
+  height: 38px;
+  margin-top: 4px;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.search-btn {
+  width: 152px;
+  height: 36px;
+  border-radius: 18px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  justify-content: center;
+  align-items: center;
+}
+.search-btn-text {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+}
+.pink {
+  background-color: rgba(251,114,153,0.5);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+}
+.white {
+  color: #ffffff;
+}
+.input-box {
+  width: 318px;
+  height: 40px;
+  margin-top: 4px;
+  border-radius: 12px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  flex-direction: row;
+  padding: 4px 8px;
+  align-items: center;
+}
+.input-text {
+  flex: 1;
+  color: #ffffff;
+  font-size: 16px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.cursor {
+  color: #fb7299;
+  font-size: 16px;
+  font-weight: bold;
+}
+.tab-row {
+  width: 318px;
+  height: 36px;
+  margin-top: 4px;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+.tab {
+  width: 100px;
+  height: 34px;
+  border-radius: 17px;
+  background-color: rgba(255,255,255,0.08);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.06);
+  justify-content: center;
+  align-items: center;
+  margin-left: 6px;
+  margin-right: 6px;
+}
+.tab-text {
+  font-size: 16px;
+  font-weight: bold;
+}
+.tab-active {
+  color: #fb7299;
+}
+.tab-normal {
+  color: rgba(255,255,255,0.5);
+}
+.status {
+  width: 318px;
+  color: rgba(255,255,255,0.6);
+  font-size: 10px;
+  margin-top: 4px;
+  text-align: center;
+}
+.video-results {
+  width: 320px;
+  flex-direction: column;
+  align-items: center;
+}
+.result-card {
+  width: 316px;
+  margin-top: 6px;
+  border-radius: 16px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  flex-direction: column;
+  padding: 6px;
+}
+.thumb {
+  width: 304px;
+  height: 116px;
+  border-radius: 12px;
+  background-color: rgba(251,114,153,0.3);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.06);
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+.thumb-img {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 304px;
+  height: 116px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+.cover-tag {
+  color: #ffffff;
+  font-size: 10px;
+  background-color: rgba(0,0,0,0.48);
+  border-radius: 8px;
+  padding: 2px 5px;
+}
+.result-title {
+  width: 300px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: bold;
+  margin-top: 5px;
+  padding: 0 2px;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.up-card {
+  width: 316px;
+  margin-top: 6px;
+  border-radius: 16px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  flex-direction: row;
+  padding: 6px;
+  align-items: center;
+}
+.up-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 26px;
+  background-color: rgba(251,114,153,0.3);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.06);
+}
+.up-info {
+  flex-direction: column;
+  margin-left: 10px;
+  justify-content: center;
+  flex: 1;
+}
+.up-name {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.up-fans {
+  color: rgba(255,255,255,0.55);
+  font-size: 11px;
+  margin-top: 4px;
+}
+.history-section {
+  width: 318px;
+  margin-top: 6px;
+  flex-direction: column;
+}
+.history-title {
+  color: rgba(255,255,255,0.5);
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.history-tags {
+  width: 318px;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.history-tag {
+  height: 34px;
+  border-radius: 17px;
+  background-color: rgba(255,255,255,0.1);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.08);
+  justify-content: center;
+  align-items: center;
+  padding: 0 12px;
+  margin-right: 6px;
+  margin-bottom: 6px;
+}
+.history-tag-text {
+  color: #ffffff;
+  font-size: 16px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.history-clear {
+  width: 90px;
+  height: 30px;
+  margin-top: 4px;
+  border-radius: 15px;
+  background-color: rgba(255,255,255,0.06);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.08);
+  justify-content: center;
+  align-items: center;
+}
+.history-clear-text {
+  color: rgba(255,255,255,0.4);
+  font-size: 14px;
+}
+.up-results {
+  width: 320px;
+  height: 330px;
+  flex-direction: column;
+  align-items: center;
+}
+.up-list-item {
+  width: 320px;
+  height: 70px;
+}
+</style>

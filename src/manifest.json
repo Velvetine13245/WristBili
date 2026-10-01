@@ -1,0 +1,171 @@
+{
+  "package": "com.example.band.bilibili.lite",
+  "name": "WristBili",
+  "icon": "/common/images/icon.png",
+  "versionName": "2.1.0",
+  "versionCode": 210,
+  "minAPILevel": 1,
+  "deviceTypeList": [
+    "watch"
+  ],
+  "features": [
+    {
+      "name": "system.app"
+    },
+    {
+      "name": "system.router"
+    },
+    {
+      "name": "system.fetch"
+    },
+    {
+      "name": "system.request"
+    },
+    {
+      "name": "system.prompt"
+    },
+    {
+      "name": "system.storage"
+    },
+    {
+      "name": "system.vibrator"
+    },
+    {
+      "name": "system.device"
+    },
+    {
+      "name": "system.interconnect"
+    },
+    {
+      "name": "system.brightness"
+    }
+  ],
+  "config": {
+    "logLevel": "log",
+    "designWidth": 336
+  },
+  "display": {
+    "backgroundColor": "#000000"
+  },
+  "router": {
+    "entry": "Splash",
+    "pages": {
+      "Splash": {
+        "component": "splash",
+        "path": "/"
+      },
+      "Home": {
+        "component": "home",
+        "path": "/home"
+      },
+      "Search": {
+        "component": "search",
+        "path": "/search"
+      },
+      "HotSearch": {
+        "component": "hotsearch",
+        "path": "/hotsearch"
+      },
+      "Dynamic": {
+        "component": "dynamic",
+        "path": "/dynamic"
+      },
+      "Messages": {
+        "component": "messages",
+        "path": "/messages"
+      },
+      "Video": {
+        "component": "video",
+        "path": "/video"
+      },
+      "AiSummary": {
+        "component": "aisummary",
+        "path": "/aisummary"
+      },
+      "Comments": {
+        "component": "comments",
+        "path": "/comments"
+      },
+      "PhoneFrames": {
+        "component": "phoneframes",
+        "path": "/phoneframes"
+      },
+      "PostComment": {
+        "component": "postcomment",
+        "path": "/postcomment"
+      },
+      "Settings": {
+        "component": "settings",
+        "path": "/settings"
+      },
+      "My": {
+        "component": "my",
+        "path": "/my"
+      },
+      "FavHistory": {
+        "component": "favhistory",
+        "path": "/favhistory"
+      },
+      "WatchLater": {
+        "component": "watchlater",
+        "path": "/watchlater"
+      },
+      "UpHome": {
+        "component": "uphome",
+        "path": "/uphome"
+      },
+      "SelectSplash": {
+        "component": "selectsplash",
+        "path": "/selectsplash"
+      },
+      "Live": {
+        "component": "live",
+        "path": "/live"
+      },
+      "WatchOnPhone": {
+        "component": "watchonphone",
+        "path": "/watchonphone"
+      },
+      "Manga": {
+        "component": "manga",
+        "path": "/manga"
+      },
+      "MangaDetail": {
+        "component": "mangadetail",
+        "path": "/mangadetail"
+      },
+      "MangaReader": {
+        "component": "mangareader",
+        "path": "/mangareader"
+      },
+      "Developer": {
+        "component": "developer",
+        "path": "/developer"
+      },
+      "Cache": {
+        "component": "cache",
+        "path": "/cache"
+      },
+      "Bridge": {
+        "component": "bridge",
+        "path": "/bridge"
+      },
+      "Fullscreen": {
+        "component": "fullscreen",
+        "path": "/fullscreen"
+      },
+      "ChatDetail": {
+        "component": "chatdetail",
+        "path": "/chatdetail"
+      },
+      "DownloadProgress": {
+        "component": "downloadprogress",
+        "path": "/downloadprogress"
+      },
+      "ServerConfig": {
+        "component": "serverconfig",
+        "path": "/serverconfig"
+      }
+    }
+  }
+}

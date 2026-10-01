@@ -1,0 +1,556 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back" onclick="back"><text class="back-text">‹</text></div>
+      <text class="title">收藏与历史</text>
+    </div>
+
+    <div class="tabs">
+      <div class="tab" onclick="switchTab('fav')"><text class="tab-text {{tab==='fav'?'tab-active':''}}">收藏</text></div>
+      <div class="tab" onclick="switchTab('history')"><text class="tab-text {{tab==='history'?'tab-active':''}}">历史</text></div>
+    </div>
+
+    <text class="status">{{status}}</text>
+
+    <div class="list">
+      <div class="video-card" if="{{i1Show}}" onclick="playVideo(1)">
+        <div class="cover">
+          <image class="cover-img" src="{{i1Cover}}" />
+        </div>
+        <text class="video-title">{{i1Title}}</text>
+        <text class="up-name">{{i1Up}}</text>
+      </div>
+      <div class="video-card" if="{{i2Show}}" onclick="playVideo(2)">
+        <div class="cover">
+          <image class="cover-img" src="{{i2Cover}}" />
+        </div>
+        <text class="video-title">{{i2Title}}</text>
+        <text class="up-name">{{i2Up}}</text>
+      </div>
+      <div class="video-card" if="{{i3Show}}" onclick="playVideo(3)">
+        <div class="cover">
+          <image class="cover-img" src="{{i3Cover}}" />
+        </div>
+        <text class="video-title">{{i3Title}}</text>
+        <text class="up-name">{{i3Up}}</text>
+      </div>
+      <div class="video-card" if="{{i4Show}}" onclick="playVideo(4)">
+        <div class="cover">
+          <image class="cover-img" src="{{i4Cover}}" />
+        </div>
+        <text class="video-title">{{i4Title}}</text>
+        <text class="up-name">{{i4Up}}</text>
+      </div>
+      <div class="video-card" if="{{i5Show}}" onclick="playVideo(5)">
+        <div class="cover">
+          <image class="cover-img" src="{{i5Cover}}" />
+        </div>
+        <text class="video-title">{{i5Title}}</text>
+        <text class="up-name">{{i5Up}}</text>
+      </div>
+      <div class="video-card" if="{{i6Show}}" onclick="playVideo(6)">
+        <div class="cover">
+          <image class="cover-img" src="{{i6Cover}}" />
+        </div>
+        <text class="video-title">{{i6Title}}</text>
+        <text class="up-name">{{i6Up}}</text>
+      </div>
+      <div class="video-card" if="{{i7Show}}" onclick="playVideo(7)">
+        <div class="cover">
+          <image class="cover-img" src="{{i7Cover}}" />
+        </div>
+        <text class="video-title">{{i7Title}}</text>
+        <text class="up-name">{{i7Up}}</text>
+      </div>
+      <div class="video-card" if="{{i8Show}}" onclick="playVideo(8)">
+        <div class="cover">
+          <image class="cover-img" src="{{i8Cover}}" />
+        </div>
+        <text class="video-title">{{i8Title}}</text>
+        <text class="up-name">{{i8Up}}</text>
+      </div>
+      <div class="video-card" if="{{i9Show}}" onclick="playVideo(9)">
+        <div class="cover">
+          <image class="cover-img" src="{{i9Cover}}" />
+        </div>
+        <text class="video-title">{{i9Title}}</text>
+        <text class="up-name">{{i9Up}}</text>
+      </div>
+      <div class="video-card" if="{{i10Show}}" onclick="playVideo(10)">
+        <div class="cover">
+          <image class="cover-img" src="{{i10Cover}}" />
+        </div>
+        <text class="video-title">{{i10Title}}</text>
+        <text class="up-name">{{i10Up}}</text>
+      </div>
+      <div class="video-card" if="{{i11Show}}" onclick="playVideo(11)">
+        <div class="cover">
+          <image class="cover-img" src="{{i11Cover}}" />
+        </div>
+        <text class="video-title">{{i11Title}}</text>
+        <text class="up-name">{{i11Up}}</text>
+      </div>
+      <div class="video-card" if="{{i12Show}}" onclick="playVideo(12)">
+        <div class="cover">
+          <image class="cover-img" src="{{i12Cover}}" />
+        </div>
+        <text class="video-title">{{i12Title}}</text>
+        <text class="up-name">{{i12Up}}</text>
+      </div>
+      <div class="video-card" if="{{i13Show}}" onclick="playVideo(13)">
+        <div class="cover">
+          <image class="cover-img" src="{{i13Cover}}" />
+        </div>
+        <text class="video-title">{{i13Title}}</text>
+        <text class="up-name">{{i13Up}}</text>
+      </div>
+      <div class="video-card" if="{{i14Show}}" onclick="playVideo(14)">
+        <div class="cover">
+          <image class="cover-img" src="{{i14Cover}}" />
+        </div>
+        <text class="video-title">{{i14Title}}</text>
+        <text class="up-name">{{i14Up}}</text>
+      </div>
+      <div class="video-card" if="{{i15Show}}" onclick="playVideo(15)">
+        <div class="cover">
+          <image class="cover-img" src="{{i15Cover}}" />
+        </div>
+        <text class="video-title">{{i15Title}}</text>
+        <text class="up-name">{{i15Up}}</text>
+      </div>
+      <div class="video-card" if="{{i16Show}}" onclick="playVideo(16)">
+        <div class="cover">
+          <image class="cover-img" src="{{i16Cover}}" />
+        </div>
+        <text class="video-title">{{i16Title}}</text>
+        <text class="up-name">{{i16Up}}</text>
+      </div>
+      <div class="video-card" if="{{i17Show}}" onclick="playVideo(17)">
+        <div class="cover">
+          <image class="cover-img" src="{{i17Cover}}" />
+        </div>
+        <text class="video-title">{{i17Title}}</text>
+        <text class="up-name">{{i17Up}}</text>
+      </div>
+      <div class="video-card" if="{{i18Show}}" onclick="playVideo(18)">
+        <div class="cover">
+          <image class="cover-img" src="{{i18Cover}}" />
+        </div>
+        <text class="video-title">{{i18Title}}</text>
+        <text class="up-name">{{i18Up}}</text>
+      </div>
+      <div class="video-card" if="{{i19Show}}" onclick="playVideo(19)">
+        <div class="cover">
+          <image class="cover-img" src="{{i19Cover}}" />
+        </div>
+        <text class="video-title">{{i19Title}}</text>
+        <text class="up-name">{{i19Up}}</text>
+      </div>
+      <div class="video-card" if="{{i20Show}}" onclick="playVideo(20)">
+        <div class="cover">
+          <image class="cover-img" src="{{i20Cover}}" />
+        </div>
+        <text class="video-title">{{i20Title}}</text>
+        <text class="up-name">{{i20Up}}</text>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetch from '@system.fetch'
+import storage from '@system.storage'
+
+export default {
+  private: {
+    tab: 'fav',
+    status: '正在加载...',
+    cookie: '',
+    mid: '',
+    mediaId: '',
+    i1Show: false, i1Title: '', i1Up: '', i1Cover: '', i1Bvid: '',
+    i2Show: false, i2Title: '', i2Up: '', i2Cover: '', i2Bvid: '',
+    i3Show: false, i3Title: '', i3Up: '', i3Cover: '', i3Bvid: '',
+    i4Show: false, i4Title: '', i4Up: '', i4Cover: '', i4Bvid: '',
+    i5Show: false, i5Title: '', i5Up: '', i5Cover: '', i5Bvid: '',
+    i6Show: false, i6Title: '', i6Up: '', i6Cover: '', i6Bvid: '',
+    i7Show: false, i7Title: '', i7Up: '', i7Cover: '', i7Bvid: '',
+    i8Show: false, i8Title: '', i8Up: '', i8Cover: '', i8Bvid: '',
+    i9Show: false, i9Title: '', i9Up: '', i9Cover: '', i9Bvid: '',
+    i10Show: false, i10Title: '', i10Up: '', i10Cover: '', i10Bvid: '',
+    i11Show: false, i11Title: '', i11Up: '', i11Cover: '', i11Bvid: '',
+    i12Show: false, i12Title: '', i12Up: '', i12Cover: '', i12Bvid: '',
+    i13Show: false, i13Title: '', i13Up: '', i13Cover: '', i13Bvid: '',
+    i14Show: false, i14Title: '', i14Up: '', i14Cover: '', i14Bvid: '',
+    i15Show: false, i15Title: '', i15Up: '', i15Cover: '', i15Bvid: '',
+    i16Show: false, i16Title: '', i16Up: '', i16Cover: '', i16Bvid: '',
+    i17Show: false, i17Title: '', i17Up: '', i17Cover: '', i17Bvid: '',
+    i18Show: false, i18Title: '', i18Up: '', i18Cover: '', i18Bvid: '',
+    i19Show: false, i19Title: '', i19Up: '', i19Cover: '', i19Bvid: '',
+    i20Show: false, i20Title: '', i20Up: '', i20Cover: '', i20Bvid: '',
+  },
+  onInit() {
+    var self = this
+    if (this.tab) {
+      this.tab = this.tab
+    }
+    storage.get({
+      key: 'bili_cookie',
+      success: function(data) {
+        self.cookie = data || ''
+        self.loadUserMid()
+      },
+      fail: function() {
+        self.status = '未登录，无法读取'
+      }
+    })
+  },
+  onShow() {
+  },
+  loadUserMid() {
+    var self = this
+    if (!this.cookie || this.cookie.length < 10) {
+      this.status = '未登录'
+      return
+    }
+    fetch.fetch({
+      url: 'https://app.bilibili.com/x/v2/account/myinfo',
+      header: {
+        'Cookie': this.cookie,
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36'
+      },
+      responseType: 'json',
+      timeout: 15000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.code === 0 && data.data && data.data.mid) {
+          self.mid = '' + data.data.mid
+          if (self.tab === 'fav') {
+            self.loadFavFolders()
+          } else {
+            self.loadHistory()
+          }
+        } else {
+          self.loadUserMidFallback()
+        }
+      },
+      fail: function() {
+        self.loadUserMidFallback()
+      }
+    })
+  },
+  loadUserMidFallback() {
+    var self = this
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/nav',
+      header: {
+        'Cookie': this.cookie,
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36'
+      },
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.data && data.data.mid) {
+          self.mid = '' + data.data.mid
+          if (self.tab === 'fav') {
+            self.loadFavFolders()
+          } else {
+            self.loadHistory()
+          }
+        } else {
+          self.status = '登录态失效'
+        }
+      },
+      fail: function() {
+        self.status = '获取用户信息失败'
+      }
+    })
+  },
+  switchTab(t) {
+    if (this.tab === t) {
+      return
+    }
+    this.tab = t
+    this.clearList()
+    if (t === 'fav') {
+      if (this.mediaId) {
+        this.loadFavList()
+      } else {
+        this.loadFavFolders()
+      }
+    } else {
+      this.loadHistory()
+    }
+  },
+  clearList() {
+    var i = 0
+    for (i = 1; i <= 20; i++) {
+      this['i' + i + 'Show'] = false
+      this['i' + i + 'Title'] = ''
+      this['i' + i + 'Up'] = ''
+      this['i' + i + 'Cover'] = ''
+      this['i' + i + 'Bvid'] = ''
+    }
+  },
+  cleanImageUrl(url) {
+    if (!url) {
+      return ''
+    }
+    if (url.indexOf('http') !== 0 && url.indexOf('//') === 0) {
+      url = 'https:' + url
+    }
+    if (url.indexOf('@') > 0) {
+      url = url.split('@')[0]
+    }
+    return url
+  },
+  buildCover(url) {
+    var cover = this.cleanImageUrl(url)
+    if (!cover) {
+      return '/common/images/icon.png'
+    }
+    if (cover.indexOf('hdslb.com') > 0 || cover.indexOf('biliimg.com') > 0) {
+      return cover + '@304w_162h_1e_1c.jpg'
+    }
+    return cover
+  },
+  loadFavFolders() {
+    var self = this
+    this.status = '正在读取收藏夹...'
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=' + this.mid + '&type=2',
+      header: {
+        'Cookie': this.cookie,
+        'User-Agent': 'Mozilla/5.0'
+      },
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        var list = data && data.data && data.data.list ? data.data.list : []
+        if (list.length > 0) {
+          self.mediaId = '' + (list[0].id || list[0].media_id || '')
+          self.loadFavList()
+        } else {
+          self.status = '暂无可读取的收藏夹'
+        }
+      },
+      fail: function() {
+        self.status = '收藏夹接口请求失败'
+      }
+    })
+  },
+  loadFavList() {
+    var self = this
+    this.status = '正在加载收藏...'
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/v3/fav/resource/list?media_id=' + this.mediaId + '&pn=1&ps=20&platform=web&type=0',
+      header: {
+        'Cookie': this.cookie,
+        'User-Agent': 'Mozilla/5.0'
+      },
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        var list = data && data.data && data.data.medias ? data.data.medias : []
+        self.applyList(list, 'fav')
+      },
+      fail: function() {
+        self.status = '收藏列表接口请求失败'
+      }
+    })
+  },
+  loadHistory() {
+    var self = this
+    this.status = '正在加载历史...'
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/history/cursor?max=0&view_at=0&business=archive',
+      header: {
+        'Cookie': this.cookie,
+        'User-Agent': 'Mozilla/5.0'
+      },
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        var list = data && data.data && data.data.list ? data.data.list : []
+        self.applyList(list, 'history')
+      },
+      fail: function() {
+        self.status = '历史接口请求失败'
+      }
+    })
+  },
+  applyList(list, type) {
+    this.clearList()
+    var count = Math.min(20, list.length)
+    var i = 0
+    for (i = 0; i < count; i++) {
+      var item = list[i]
+      var n = i + 1
+      this['i' + n + 'Show'] = true
+      if (type === 'fav') {
+        this['i' + n + 'Title'] = item.title || '视频'
+        this['i' + n + 'Up'] = item.upper && item.upper.name ? item.upper.name : 'UP主'
+        this['i' + n + 'Cover'] = this.buildCover(item.cover)
+        this['i' + n + 'Bvid'] = item.bvid || ''
+      } else {
+        this['i' + n + 'Title'] = item.title || '视频'
+        this['i' + n + 'Up'] = item.author_name || 'UP主'
+        this['i' + n + 'Cover'] = this.buildCover(item.cover)
+        this['i' + n + 'Bvid'] = item.history && item.history.bvid ? item.history.bvid : (item.bvid || '')
+      }
+    }
+    this.status = type === 'fav' ? '收藏加载完成' : '历史加载完成'
+  },
+  playVideo(index) {
+    var bvid = this['i' + index + 'Bvid']
+    if (!bvid) {
+      return
+    }
+    router.push({
+      uri: '/video',
+      params: { bvid: bvid, title: this['i' + index + 'Title'] }
+    })
+  },
+
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_blue.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 8px;
+
+}
+.header {
+  width: 318px;
+  height: 44px;
+  flex-direction: row;
+  align-items: center;
+}
+.back {
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+  align-items: center;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 32px;
+}
+.title {
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.tabs {
+  width: 318px;
+  height: 42px;
+  margin-top: 4px;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.tab {
+  width: 154px;
+  height: 40px;
+  border-radius: 20px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  justify-content: center;
+  align-items: center;
+}
+.tab-text {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+}
+.tab-active {
+  color: #fb7299;
+}
+.status {
+  width: 318px;
+  color: #fb7299;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 4px;
+}
+.list {
+  width: 320px;
+  margin-top: 4px;
+  flex-direction: column;
+  align-items: center;
+}
+.video-card {
+  width: 316px;
+  margin-top: 10px;
+  border-radius: 16px;
+  background-color: rgba(255,255,255,0.08);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  flex-direction: column;
+  padding: 6px;
+}
+.cover {
+  width: 304px;
+  height: 162px;
+  border-radius: 12px;
+  background-color: #fb7299;
+  flex-shrink: 0;
+}
+.cover-img {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 304px;
+  height: 162px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+.video-title {
+  width: 300px;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 8px;
+  padding: 0 2px;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.up-name {
+  width: 300px;
+  color: rgba(255,255,255,0.5);
+  font-size: 13px;
+  margin-top: 4px;
+  padding: 0 2px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+
+</style>

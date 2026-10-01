@@ -1,0 +1,247 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back" onclick="back"><text class="back-text">‹</text></div>
+      <text class="title">{{title}}</text>
+    </div>
+
+    <text class="chapter-name">{{chapterName}}</text>
+
+    <div class="image-box">
+      <image class="manga-page" src="{{currentImage}}" />
+    </div>
+
+    <text class="page-num">{{pageStatus}}</text>
+
+    <div class="nav-actions">
+      <div class="nav-btn" onclick="prevPage"><text class="nav-btn-text">上一页</text></div>
+      <div class="nav-btn pink" onclick="nextPage"><text class="nav-btn-text white">下一页</text></div>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetch from '@system.fetch'
+
+function cleanUrl(url) {
+  if (!url) return ''
+  if (url.indexOf('http') !== 0 && url.indexOf('//') === 0) {
+    return 'https:' + url
+  }
+  return url
+}
+
+function compressImage(url) {
+  if (!url) return ''
+  url = cleanUrl(url)
+  if (url.indexOf('hdslb.com') > 0 || url.indexOf('biliimg.com') > 0) {
+    if (url.indexOf('@') < 0 && url.indexOf('?') < 0) {
+      url = url + '@240w_320h_1e_1c.jpg'
+    } else if (url.indexOf('@') < 0 && url.indexOf('?') > 0) {
+      var parts = url.split('?')
+      url = parts[0] + '@240w_320h_1e_1c.jpg?' + parts[1]
+    }
+  }
+  return url
+}
+
+export default {
+  private: {
+    comicId: '',
+    epId: '',
+    title: '',
+    chapterName: '',
+    images: [],
+    tokens: [],
+    currentPage: 0,
+    pageStatus: '加载中...',
+    currentImage: '',
+    host: 'https://manga.hdslb.com'
+  },
+  onInit() {
+    if (!this.epId) {
+      this.pageStatus = '缺少章节ID'
+      return
+    }
+    this.loadImagesProxy()
+  },
+  onShow() {
+  },
+  loadImagesProxy() {
+    var self = this
+    this.pageStatus = '正在加载图片索引...'
+    fetch.fetch({
+      url: 'https://apis.netstart.cn/bcomic/GetImageIndex?ep_id=' + this.epId,
+      method: 'GET',
+      header: {
+        'User-Agent': 'Mozilla/5.0'
+      },
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data) } catch (e) { data = null }
+        }
+        if (!data || data.code !== 0) {
+          self.pageStatus = '图片索引接口不可用'
+          return
+        }
+        self.parseImagesProxy(data.data)
+      },
+      fail: function() {
+        self.pageStatus = '图片索引请求失败'
+      }
+    })
+  },
+  parseImagesProxy(d) {
+    if (!d || !d.images || d.images.length === 0) {
+      this.pageStatus = '该章节暂无图片'
+      return
+    }
+    this.host = d.host || 'https://manga.hdslb.com'
+    var imgs = d.images
+    this.images = imgs
+    var urls = []
+    var i = 0
+    for (i = 0; i < imgs.length; i++) {
+      var path = imgs[i].path || ''
+      if (path.indexOf('http') !== 0) {
+        path = this.host + path
+      }
+      urls.push(path)
+    }
+    this.tokens = urls
+    this.currentPage = 0
+    this.showPage()
+  },
+  showPage() {
+    if (this.tokens.length === 0) {
+      this.currentImage = ''
+      this.pageStatus = '暂无图片'
+      return
+    }
+    var idx = this.currentPage
+    if (idx < 0) idx = 0
+    if (idx >= this.tokens.length) idx = this.tokens.length - 1
+    this.currentPage = idx
+    var rawUrl = this.tokens[idx]
+    this.currentImage = compressImage(rawUrl)
+    this.pageStatus = (idx + 1) + ' / ' + this.tokens.length
+  },
+  prevPage() {
+    if (this.currentPage > 0) {
+      this.currentPage = this.currentPage - 1
+      this.showPage()
+    }
+  },
+  nextPage() {
+    if (this.currentPage < this.tokens.length - 1) {
+      this.currentPage = this.currentPage + 1
+      this.showPage()
+    }
+  },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  height: 480px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_comment.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 6px 8px;
+
+}
+.header {
+  width: 318px;
+  height: 38px;
+  flex-direction: row;
+  align-items: center;
+}
+.back {
+  width: 34px;
+  height: 34px;
+  justify-content: center;
+  align-items: center;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 30px;
+}
+.title {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  margin-left: 8px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.chapter-name {
+  width: 318px;
+  color: #fb7299;
+  font-size: 12px;
+  font-weight: bold;
+  margin-top: 4px;
+  text-align: center;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.image-box {
+  width: 318px;
+  height: 310px;
+  margin-top: 6px;
+  border-radius: 14px;
+  background-color: rgba(255,255,255,0.05);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  justify-content: center;
+  align-items: center;
+}
+.manga-page {
+  width: 300px;
+  height: 290px;
+  object-fit: contain;
+}
+.page-num {
+  width: 318px;
+  color: rgba(255,255,255,0.5);
+  font-size: 11px;
+  margin-top: 4px;
+  text-align: center;
+}
+.nav-actions {
+  width: 318px;
+  height: 38px;
+  margin-top: 6px;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.nav-btn {
+  width: 152px;
+  height: 36px;
+  border-radius: 18px;
+  background-color: #000000;
+  justify-content: center;
+  align-items: center;
+}
+.nav-btn-text {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+}
+.pink {
+  background-color: #fb7299;
+}
+.white {
+  color: #ffffff;
+}
+</style>

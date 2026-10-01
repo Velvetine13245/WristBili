@@ -1,0 +1,295 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back" onclick="back"><text class="back-text">‹</text></div>
+      <text class="title">AI视频总结</text>
+    </div>
+
+    <div class="video-card">
+      <image class="cover" src="{{cover}}" />
+      <div class="video-info">
+        <text class="video-title">{{title}}</text>
+        <text class="up-name">UP：{{upName}}</text>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <div class="wide-btn pink" onclick="loadSummary"><text class="btn-text white">获取总结</text></div>
+    </div>
+
+    <div class="summary-card">
+      <text class="summary-title">{{sourceName}}</text>
+      <text class="summary-text">{{summaryText}}</text>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetchBridge from '../common/scripts/fetchbridge'
+import storage from '@system.storage'
+
+export default {
+  private: {
+    bvid: '',
+    cid: '',
+    upMid: '',
+    upName: 'UP主',
+    title: 'B站视频',
+    pic: '/common/images/icon.png',
+    cover: '/common/images/icon.png',
+    sourceName: '总结结果',
+    summaryText: '点击获取总结',
+    desc: ''
+  },
+  onInit() {
+    this.cover = this.buildCover(this.pic)
+    this.loadSummary()
+  },
+  onShow() {
+  },
+  cleanImageUrl(url) {
+    if (!url) {
+      return ''
+    }
+    if (url.indexOf('http') !== 0 && url.indexOf('//') === 0) {
+      url = 'https:' + url
+    }
+    if (url.indexOf('@') > 0) {
+      url = url.split('@')[0]
+    }
+    return url
+  },
+  buildCover(url) {
+    var cover = this.cleanImageUrl(url)
+    if (!cover) {
+      return '/common/images/icon.png'
+    }
+    if (cover.indexOf('hdslb.com') > 0 || cover.indexOf('biliimg.com') > 0) {
+      return cover + '@96w_64h_1e_1c.jpg'
+    }
+    return cover
+  },
+  loadSummary() {
+    var self = this
+    if (!this.bvid) {
+      this.sourceName = '无法获取'
+      this.summaryText = '缺少视频信息，请从视频页进入'
+      return
+    }
+    this.sourceName = '正在获取...'
+    this.summaryText = '正在请求B站AI总结接口'
+    storage.get({
+      key: 'bili_cookie',
+      success: function(cookie) {
+        self.fetchConclusion(cookie || '')
+      },
+      fail: function() {
+        self.fetchConclusion('')
+      }
+    })
+  },
+  fetchConclusion(cookie) {
+    var self = this
+    // HyperBilibili 移植接口：x/web-interface/view/conclusion/get
+    var url = 'https://api.bilibili.com/x/web-interface/view/conclusion/get?bvid=' + this.bvid
+    if (this.cid) {
+      url = url + '&cid=' + this.cid
+    }
+    if (this.upMid) {
+      url = url + '&up_mid=' + this.upMid
+    }
+    var header = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Referer': 'https://www.bilibili.com/video/' + this.bvid
+    }
+    if (cookie && cookie.length > 10) {
+      header['Cookie'] = cookie
+    }
+    fetchBridge.fetch({
+      url: url,
+      header: header,
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data)
+          } catch (e) {
+            self.sourceName = '解析失败'
+            self.summaryText = '返回数据格式异常'
+            return
+          }
+        }
+        var summary = self.parseConclusion(data)
+        if (summary) {
+          if (summary.length > 200) {
+            summary = summary.substring(0, 200) + '...'
+          }
+          self.sourceName = 'B站AI总结'
+          self.summaryText = summary
+        } else {
+          self.sourceName = '暂无总结'
+          self.summaryText = '该视频暂无AI总结内容'
+        }
+      },
+      fail: function() {
+        self.sourceName = '请求失败'
+        self.summaryText = '网络请求失败，请稍后重试'
+      }
+    })
+  },
+  parseConclusion(data) {
+    if (!data) {
+      return ''
+    }
+    // HyperBilibili 解析方式：model_result -> summary
+    if (data.data && data.data.model_result && data.data.model_result.summary) {
+      return data.data.model_result.summary
+    }
+    if (data.data && data.data.summary) {
+      return data.data.summary
+    }
+    if (data.model_result && data.model_result.summary) {
+      return data.model_result.summary
+    }
+    if (data.summary) {
+      return data.summary
+    }
+    return ''
+  },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  height: 480px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: linear-gradient(160deg, #050507 0%, #0c0c12 40%, #000000 100%);
+  padding: 8px;
+}
+.header {
+  width: 318px;
+  height: 38px;
+  flex-direction: row;
+  align-items: center;
+}
+.back {
+  width: 34px;
+  height: 34px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 17px;
+  background-color: rgba(255,255,255,0.03);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.06);
+}
+.back-text {
+  color: rgba(255,255,255,0.8);
+  font-size: 30px;
+}
+.title {
+  color: rgba(255,255,255,0.9);
+  font-size: 18px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.video-card {
+  width: 318px;
+  height: 76px;
+  margin-top: 6px;
+  border-radius: 20px;
+  background-color: rgba(255,255,255,0.025);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.05);
+  flex-direction: row;
+  align-items: center;
+  padding: 6px;
+}
+.cover {
+  width: 96px;
+  height: 64px;
+  border-radius: 14px;
+  object-fit: cover;
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.06);
+}
+.video-info {
+  width: 198px;
+  margin-left: 8px;
+  flex-direction: column;
+}
+.video-title {
+  color: rgba(255,255,255,0.9);
+  font-size: 12px;
+  font-weight: bold;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.up-name {
+  color: rgba(255,255,255,0.4);
+  font-size: 10px;
+  margin-top: 5px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.btn-row {
+  width: 318px;
+  height: 40px;
+  margin-top: 8px;
+  flex-direction: row;
+  justify-content: center;
+}
+.wide-btn {
+  width: 318px;
+  height: 38px;
+  border-radius: 20px;
+  background-color: rgba(255,255,255,0.03);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.06);
+  justify-content: center;
+  align-items: center;
+}
+.pink {
+  background-color: rgba(251,114,153,0.85);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+}
+.btn-text {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+}
+.white {
+  color: #ffffff;
+}
+.summary-card {
+  width: 318px;
+  height: 210px;
+  margin-top: 8px;
+  border-radius: 22px;
+  background-color: rgba(255,255,255,0.025);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.05);
+  flex-direction: column;
+  padding: 12px;
+}
+.summary-title {
+  color: rgba(251,114,153,0.85);
+  font-size: 14px;
+  font-weight: bold;
+}
+.summary-text {
+  color: rgba(255,255,255,0.75);
+  font-size: 13px;
+  margin-top: 8px;
+  lines: 10;
+  text-overflow: ellipsis;
+}
+</style>

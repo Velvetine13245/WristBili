@@ -1,0 +1,1907 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <image class="back-icon" src="/common/images/icon_back.jpg" onclick="back" />
+      <text class="header-title">视频</text>
+    </div>
+
+    <div class="player">
+      <image class="poster-img" src="{{currentFrame}}" />
+      <text class="fullscreen-label" if="{{showFullscreenBtn}}" onclick="goFullscreen">全屏</text>
+    </div>
+
+    <text class="title">{{title}}</text>
+
+    <div class="stat-row">
+      <text class="stat-text">▶ {{stat}}</text>
+      <div class="up-link" onclick="openUpHome">
+        <image class="up-face" src="{{upFace}}" />
+        <text class="up-name">{{upName}}</text>
+      </div>
+    </div>
+
+    <div class="actions">
+      <div class="action-btn" onclick="toggleLike" onlongpress="tripleAction">
+        <image class="action-icon-img" src="{{likeIcon}}" />
+        <text class="action-count">{{likeCountText}}</text>
+      </div>
+      <div class="action-btn" onclick="toggleCoin">
+        <image class="action-icon-img" src="{{coinIcon}}" />
+        <text class="action-count">{{coinCountText}}</text>
+      </div>
+      <div class="action-btn" onclick="toggleFavorite">
+        <image class="action-icon-img" src="{{favIcon}}" />
+        <text class="action-count">{{favCountText}}</text>
+      </div>
+      <div class="action-btn" onclick="loadAiSummary">
+        <image class="action-icon-img" src="/common/images/vid_aisummary.png" />
+        <text class="action-label">视频总结</text>
+      </div>
+      <div class="action-btn" onclick="addToWatchLater">
+        <image class="action-icon-img" src="/common/images/vid_watchlater.png" />
+        <text class="action-label">稍后再看</text>
+      </div>
+      <div class="action-btn" onclick="showQrCode">
+        <image class="action-icon-img" src="/common/images/vid_watchonphone.png" />
+        <text class="action-label">手机上看</text>
+      </div>
+    </div>
+
+    <div class="progress-bar" if="{{showProgressBar}}">
+      <div class="progress-fill" style="width: {{progressWidth}}px;"></div>
+    </div>
+
+    <text class="frame-count-text" if="{{showFrameInfo}}">{{frameInfoText}}</text>
+
+    <div class="bottom-btns">
+      <div class="comment-btn" onclick="goComments">
+        <text class="comment-text">评论区</text>
+      </div>
+      <div class="post-btn" onclick="goPostComment" if="{{canPost}}">
+        <text class="post-text">发评论</text>
+      </div>
+    </div>
+
+    <div class="pause-bar" if="{{showPauseBtn}}" onclick="togglePause">
+      <image class="pause-bar-icon" src="{{pauseIcon}}" />
+      <text class="pause-bar-text">{{pauseLabel}}</text>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetch from '@system.fetch'
+import storage from '@system.storage'
+import brightness from '@system.brightness'
+import fetchBridge from '../common/scripts/fetchbridge'
+
+export default {
+  private: {
+    title: '手环上看 B 站是什么体验？',
+    bvid: '',
+    cid: '',
+    aid: '',
+    stat: '12.6万播放',
+    viewText: '播放量',
+    pic: '/common/images/icon.png',
+    currentFrame: '/common/images/icon.png',
+    videoUrl: '',
+    playerTip: '正在获取 B 站播放地址...',
+    playStatus: '准备中',
+    note: '正在连接 api.bilibili.com',
+    frameTimer: null,
+    frameIndex: 0,
+    frameList: [],
+    playCount: 0,
+    isPaused: false,
+    showPauseBtn: false,
+    pauseIcon: '/common/images/vid_pause_new.png',
+    pauseLabel: '暂停',
+    showProgressBar: false,
+    showFullscreenBtn: false,
+    showFrameInfo: false,
+    frameInfoText: '',
+    progressWidth: 0,
+    liked: false,
+    coined: false,
+    faved: false,
+    likedText: '点赞',
+    coinText: '投币',
+    favText: '收藏',
+    likeIcon: '/common/images/vid_like.png',
+    coinIcon: '/common/images/vid_coin.png',
+    favIcon: '/common/images/vid_star.png',
+    likeCountText: '0',
+    coinCountText: '0',
+    favCountText: '0',
+    likeRetry: 0,
+    coinRetry: 0,
+    favRetry: 0,
+    canPost: false,
+    upName: '正在读取 UP 主',
+    upFace: '/common/images/icon.png',
+    upMid: '',
+    followed: false,
+    followText: '关注',
+    aiText: '',
+    desc: '',
+    useFrameMode: false,
+    useTranscodeMode: false,
+    useServerMode: false,
+    serverAddr: '',
+    serverSessionId: '',
+    serverPollTimer: null,
+    transcodeQuality: 'standard',
+    offline: 'false',
+    c1User: '',
+    c1Text: '',
+    c2User: '',
+    c2Text: '',
+    c3User: '',
+    c3Text: '',
+    // 转码模式：雪碧图信息
+    spriteUrls: [],
+    imgXLen: 10,
+    imgYLen: 10,
+    imgXSize: 160,
+    imgYSize: 90,
+    indexList: [],
+    pageReady: false,
+    framesReady: false
+  },
+  onInit() {
+    if (this.title === '') {
+      this.title = '手环上看 B 站是什么体验？'
+    }
+    this.currentFrame = this.cleanImageUrl(this.pic) || '/common/images/icon.png'
+    this.checkLogin()
+    if (this.offline === 'true' && this.bvid) {
+      this.loadOfflineData()
+    } else {
+      this.loadPlaySource()
+    }
+  },
+  onReady() {
+    this.pageReady = true
+    this.tryStartPlayback()
+  },
+  onShow() {
+    this.applyKeepScreenOn()
+    // 从全屏页返回时，帧数据和雪碧图已被清空，需要重新加载
+    if (this.bvid && this.frameList.length === 0 && !this.framesReady) {
+      this.pageReady = true
+      this.currentFrame = this.cleanImageUrl(this.pic) || '/common/images/icon.png'
+      this.showFullscreenBtn = false
+      if (this.offline === 'true') {
+        this.loadOfflineData()
+      } else {
+        this.loadPlaySource()
+      }
+    }
+  },
+  applyKeepScreenOn() {
+    storage.get({
+      key: 'bili_keep_screen_on',
+      success: function(data) {
+        brightness.setKeepScreenOn({
+          keepScreenOn: (data === 'true'),
+          success: function() {},
+          fail: function() {}
+        })
+      },
+      fail: function() {}
+    })
+  },
+  tryStartPlayback() {
+    if (this.pageReady && this.framesReady && this.frameList.length > 0) {
+      this.framesReady = false
+      this.startFramePlayback()
+    }
+  },
+  loadOfflineData() {
+    var self = this
+    storage.get({
+      key: 'bili_offline_' + this.bvid,
+      success: function(data) {
+        if (!data) {
+          self.offline = 'false'
+          self.loadPlaySource()
+          return
+        }
+        var cached = {}
+        try {
+          cached = JSON.parse(data)
+        } catch (e) {
+          self.offline = 'false'
+          self.loadPlaySource()
+          return
+        }
+        if (!cached.frameList || cached.frameList.length === 0) {
+          self.offline = 'false'
+          self.loadPlaySource()
+          return
+        }
+        self.cid = cached.cid || ''
+        self.aid = cached.aid || ''
+        self.title = cached.title || self.title
+        self.pic = cached.pic || self.pic
+        self.upName = cached.upName || self.upName
+        self.upFace = cached.upFace || self.upFace
+        self.upMid = cached.upMid || ''
+        self.stat = cached.stat || self.stat
+        self.spriteUrls = cached.spriteUrls || []
+        self.imgXLen = cached.imgXLen || 10
+        self.imgYLen = cached.imgYLen || 10
+        self.imgXSize = cached.imgXSize || 160
+        self.imgYSize = cached.imgYSize || 90
+        self.indexList = cached.indexList || []
+        self.transcodeQuality = cached.transcodeQuality || 'standard'
+        self.frameList = cached.frameList
+        self.frameInfoText = '离线 ' + cached.frameList.length + ' 帧'
+        self.showFrameInfo = true
+        self.showProgressBar = true
+        self.showPauseBtn = true
+        self.isPaused = false
+        self.pauseIcon = '/common/images/vid_pause_new.png'
+        self.pauseLabel = '暂停'
+        self.progressWidth = 0
+        self.currentFrame = self.cleanImageUrl(self.pic) || '/common/images/icon.png'
+        self.framesReady = true
+        self.tryStartPlayback()
+      },
+      fail: function() {
+        self.offline = 'false'
+        self.loadPlaySource()
+      }
+    })
+  },
+  loadPlaySource() {
+    var self = this
+    storage.get({
+      key: 'bili_playsource',
+      success: function(data) {
+        if (data === 'frame') {
+          self.useFrameMode = true
+          self.useTranscodeMode = false
+          self.useServerMode = false
+        } else if (data === 'transcode') {
+          self.useFrameMode = false
+          self.useTranscodeMode = true
+          self.useServerMode = false
+        } else if (data === 'server') {
+          self.useFrameMode = false
+          self.useTranscodeMode = false
+          self.useServerMode = true
+        } else {
+          self.useFrameMode = false
+          self.useTranscodeMode = false
+          self.useServerMode = false
+        }
+        storage.get({
+          key: 'bili_transcode_quality',
+          success: function(q) {
+            if (q === '120p' || q === '480p' || q === '1080p') {
+              self.transcodeQuality = q
+            } else {
+              self.transcodeQuality = 'standard'
+            }
+            self.prepareVideo()
+          },
+          fail: function() {
+            self.transcodeQuality = 'standard'
+            self.prepareVideo()
+          }
+        })
+      },
+      fail: function() {
+        self.useFrameMode = false
+        self.useTranscodeMode = false
+        self.useServerMode = false
+        self.transcodeQuality = 'standard'
+        self.prepareVideo()
+      }
+    })
+  },
+  checkLogin() {
+    var self = this
+    storage.get({
+      key: 'bili_cookie',
+      success: function(data) {
+        self.canPost = !!(data && data.length > 10)
+      },
+      fail: function() {
+        self.canPost = false
+      }
+    })
+  },
+  prepareVideo() {
+    if (!this.bvid) {
+      return
+    }
+    if (this.cid) {
+      this.applyPlayMode()
+      this.loadPlayUrl()
+      this.loadAidInfo()
+      return
+    }
+    this.loadViewInfo()
+  },
+  loadViewInfo() {
+    var self = this
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/view?bvid=' + this.bvid,
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.data) {
+          self.aid = data.data.aid ? '' + data.data.aid : ''
+          self.cid = data.data.cid ? '' + data.data.cid : ''
+          self.pic = data.data.pic || self.pic
+          self.currentFrame = self.pic
+          self.applyOwner(data.data.owner)
+          self.applyStat(data.data.stat)
+          self.desc = data.data.desc || ''
+          if (!self.title || self.title === '手环上看 B 站是什么体验？') {
+            self.title = data.data.title || self.title
+          }
+          self.applyPlayMode()
+          self.loadPlayUrl()
+          self.loadCommentsForCache()
+        } else {
+        }
+      },
+      fail: function() {
+      }
+    })
+  },
+  loadAidInfo() {
+    var self = this
+    if (!this.bvid || this.aid) {
+      return
+    }
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/view?bvid=' + this.bvid,
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.data) {
+          self.aid = data.data.aid ? '' + data.data.aid : ''
+          if (!self.cid) {
+            self.cid = data.data.cid ? '' + data.data.cid : ''
+          }
+          if (data.data.pic) {
+            self.pic = data.data.pic
+          }
+          self.applyOwner(data.data.owner)
+          self.applyStat(data.data.stat)
+        }
+      },
+      fail: function() {}
+    })
+  },
+  cleanImageUrl(url) {
+    if (!url) {
+      return ''
+    }
+    if (url.indexOf('http') !== 0 && url.indexOf('//') === 0) {
+      url = 'https:' + url
+    }
+    if (url.indexOf('@') > 0) {
+      url = url.split('@')[0]
+    }
+    return url
+  },
+  buildStandardCoverUrl(url) {
+    var cover = this.cleanImageUrl(url)
+    if (!cover) {
+      return ''
+    }
+    if (cover.indexOf('hdslb.com') > 0 || cover.indexOf('biliimg.com') > 0) {
+      return cover + '@312w_210h_1e_1c.jpg'
+    }
+    return cover
+  },
+  applyOwner(owner) {
+    if (!owner) {
+      return
+    }
+    this.upName = owner.name || 'UP 主'
+    this.upMid = owner.mid ? '' + owner.mid : ''
+    var face = this.cleanImageUrl(owner.face || '')
+    if (face) {
+      if (face.indexOf('hdslb.com') > 0 || face.indexOf('biliimg.com') > 0) {
+        face = face + '@48w_48h_1e_1c.jpg'
+      }
+      this.upFace = face
+    }
+  },
+  formatView(view) {
+    if (!view) {
+      return '0播放'
+    }
+    if (view > 100000000) {
+      return (view / 100000000).toFixed(1) + '亿播放'
+    }
+    if (view > 10000) {
+      return (view / 10000).toFixed(1) + '万播放'
+    }
+    return view + '播放'
+  },
+  formatActionNum(num) {
+    if (!num) {
+      return '0'
+    }
+    if (num > 10000) {
+      return (num / 10000).toFixed(1) + '万'
+    }
+    return '' + num
+  },
+  applyStat(stat) {
+    if (!stat) {
+      return
+    }
+    var text = this.formatView(stat.view || 0)
+    this.stat = text
+    this.viewText = text
+    this.likeCountText = this.formatActionNum(stat.like || 0)
+    this.coinCountText = this.formatActionNum(stat.coin || 0)
+    this.favCountText = this.formatActionNum(stat.favorite || 0)
+  },
+  buildCoverFrameList() {
+    var frames = []
+    var cover = this.cleanImageUrl(this.pic)
+    if (cover) {
+      frames.push(cover)
+    }
+    var crops = [
+      '624w_420h_1e_1c.jpg',
+      '624w_420h_1e_2c.jpg',
+      '624w_420h_1e_3c.jpg',
+      '624w_420h_2e_1c.jpg',
+      '624w_420h_2e_2c.jpg',
+      '624w_420h_2e_3c.jpg',
+      '480w_320h_1e_1c.jpg',
+      '480w_320h_1e_2c.jpg',
+      '480w_320h_1e_3c.jpg',
+      '312w_175h_0e_0c.jpg',
+      '300w_210h_1e_1c.jpg',
+      '300w_210h_1e_2c.jpg',
+      '300w_210h_1e_3c.jpg',
+      '260w_176h_1e_1c.jpg',
+      '260w_176h_1e_2c.jpg',
+      '260w_176h_1e_3c.jpg',
+      '240w_162h_1e_1c.jpg',
+      '240w_162h_1e_2c.jpg',
+      '240w_162h_1e_3c.jpg',
+      '208w_140h_1e_1c.jpg',
+      '208w_140h_1e_2c.jpg',
+      '208w_140h_1e_3c.jpg',
+      '180w_120h_1e_1c.jpg',
+      '180w_120h_1e_2c.jpg',
+      '180w_120h_1e_3c.jpg',
+      '160w_108h_1e_1c.jpg',
+      '160w_108h_1e_2c.jpg'
+    ]
+    var i = 0
+    if (cover.indexOf('hdslb.com') > 0 || cover.indexOf('biliimg.com') > 0) {
+      for (i = 0; i < crops.length; i++) {
+        frames.push(cover + '@' + crops[i])
+      }
+    }
+    this.frameList = frames
+    this.frameInfoText = '图片帧 ' + frames.length + ' 帧'
+    this.showFrameInfo = true
+    this.showProgressBar = true
+    this.showPauseBtn = true
+    this.isPaused = false
+    this.pauseIcon = '/common/images/vid_pause_new.png'
+    this.pauseLabel = '暂停'
+    this.progressWidth = 0
+    this.framesReady = true
+    this.tryStartPlayback()
+  },
+  applyPlayMode() {
+    if (this.useServerMode) {
+      this.loadServerFrames()
+    } else if (this.useTranscodeMode) {
+      this.loadVideoShot()
+    } else if (this.useFrameMode) {
+      this.buildCoverFrameList()
+    } else {
+      this.showCoverOnly()
+    }
+  },
+  loadServerFrames() {
+    var self = this
+    storage.get({
+      key: 'bili_server_addr',
+      success: function(addr) {
+        if (!addr || addr.length < 5) {
+          self.frameInfoText = '请先设置服务器地址'
+          self.showFrameInfo = true
+          self.showCoverOnly()
+          return
+        }
+        self.serverAddr = addr
+        storage.get({
+          key: 'bili_cookie',
+          success: function(cookie) {
+            var url = 'http://' + addr + '/api/frames?bvid=' + self.bvid + '&cid=' + (self.cid || '') + '&cookie=' + (encodeURIComponent(cookie) || '')
+            self.frameInfoText = '正在连接服务器...'
+            self.showFrameInfo = true
+            fetchBridge.fetch({
+              url: url,
+              responseType: 'json',
+              timeout: 30000,
+              success: function(res) {
+                var data = res.data
+                if (typeof data === 'string') {
+                  data = JSON.parse(data)
+                }
+                if (data && data.sessionId) {
+                  self.serverSessionId = data.sessionId
+                  if (data.status === 'ready' && data.frames && data.frames.length > 0) {
+                    self.buildServerFrameList(addr, data.frames)
+                  } else {
+                    self.frameInfoText = '服务器解码中...'
+                    self.pollServerStatus(addr, data.sessionId)
+                  }
+                } else {
+                  self.frameInfoText = '服务器返回异常'
+                  self.showCoverOnly()
+                }
+              },
+              fail: function() {
+                self.frameInfoText = '无法连接服务器'
+                self.showCoverOnly()
+              }
+            })
+          },
+          fail: function() {
+            var url = 'http://' + addr + '/api/frames?bvid=' + self.bvid + '&cid=' + (self.cid || '')
+            self.frameInfoText = '正在连接服务器...'
+            self.showFrameInfo = true
+            fetchBridge.fetch({
+              url: url,
+              responseType: 'json',
+              timeout: 30000,
+              success: function(res) {
+                var data = res.data
+                if (typeof data === 'string') {
+                  data = JSON.parse(data)
+                }
+                if (data && data.sessionId) {
+                  self.serverSessionId = data.sessionId
+                  if (data.status === 'ready' && data.frames && data.frames.length > 0) {
+                    self.buildServerFrameList(addr, data.frames)
+                  } else {
+                    self.frameInfoText = '服务器解码中...'
+                    self.pollServerStatus(addr, data.sessionId)
+                  }
+                } else {
+                  self.frameInfoText = '服务器返回异常'
+                  self.showCoverOnly()
+                }
+              },
+              fail: function() {
+                self.frameInfoText = '无法连接服务器'
+                self.showCoverOnly()
+              }
+            })
+          }
+        })
+      },
+      fail: function() {
+        self.frameInfoText = '请先设置服务器地址'
+        self.showFrameInfo = true
+        self.showCoverOnly()
+      }
+    })
+  },
+  pollServerStatus(addr, sessionId) {
+    var self = this
+    if (self.serverPollTimer) {
+      clearInterval(self.serverPollTimer)
+    }
+    var pollCount = 0
+    self.serverPollTimer = setInterval(function() {
+      pollCount = pollCount + 1
+      if (pollCount > 60) {
+        clearInterval(self.serverPollTimer)
+        self.serverPollTimer = null
+        self.frameInfoText = '服务器解码超时'
+        self.showCoverOnly()
+        return
+      }
+      fetchBridge.fetch({
+        url: 'http://' + addr + '/api/status/' + sessionId,
+        responseType: 'json',
+        timeout: 10000,
+        success: function(res) {
+          var data = res.data
+          if (typeof data === 'string') {
+            data = JSON.parse(data)
+          }
+          if (data && data.status === 'ready' && data.frames && data.frames.length > 0) {
+            clearInterval(self.serverPollTimer)
+            self.serverPollTimer = null
+            self.buildServerFrameList(addr, data.frames)
+          } else if (data && data.status === 'error') {
+            clearInterval(self.serverPollTimer)
+            self.serverPollTimer = null
+            self.frameInfoText = '服务器解码失败: ' + (data.error || '未知错误')
+            self.showCoverOnly()
+          } else {
+            self.frameInfoText = '服务器解码中... ' + (data.decodedFrames || 0) + '帧'
+          }
+        },
+        fail: function() {}
+      })
+    }, 3000)
+  },
+  buildServerFrameList(addr, framePaths) {
+    var frameList = []
+    var i = 0
+    for (i = 0; i < framePaths.length; i++) {
+      frameList.push('http://' + addr + framePaths[i])
+    }
+    if (frameList.length === 0) {
+      this.showCoverOnly()
+      return
+    }
+    this.frameList = frameList
+    this.frameInfoText = '服务器 ' + frameList.length + ' 帧'
+    this.showFrameInfo = true
+    this.showProgressBar = true
+    this.showPauseBtn = true
+    this.isPaused = false
+    this.pauseIcon = '/common/images/vid_pause_new.png'
+    this.pauseLabel = '暂停'
+    this.progressWidth = 0
+    this.framesReady = true
+    this.tryStartPlayback()
+  },
+  loadVideoShot() {
+    var self = this
+    if (!this.cid) {
+      this.showCoverOnly()
+      return
+    }
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/player/videoshot?bvid=' + this.bvid + '&cid=' + this.cid + '&index=1',
+      responseType: 'json',
+      timeout: 15000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.code === 0 && data.data) {
+          var d = data.data
+          self.imgXLen = d.img_x_len || 10
+          self.imgYLen = d.img_y_len || 10
+          self.imgXSize = d.img_x_size || 160
+          self.imgYSize = d.img_y_size || 90
+          var urls = []
+          if (d.image && d.image.length > 0) {
+            var i = 0
+            for (i = 0; i < d.image.length; i++) {
+              var url = d.image[i]
+              if (url.indexOf('//') === 0) {
+                url = 'https:' + url
+              }
+              if (url.indexOf('http') === 0) {
+                urls.push(url)
+              }
+            }
+          }
+          var indexArr = d.index || []
+          if (urls.length > 0) {
+            self.spriteUrls = urls
+            self.indexList = indexArr
+            self.buildTranscodeFrames()
+            return
+          }
+        }
+        self.showCoverOnly()
+      },
+      fail: function() {
+        self.showCoverOnly()
+      }
+    })
+  },
+  buildTranscodeFrames() {
+    var frameList = []
+    var i = 0
+    var framesPerSprite = this.imgXLen * this.imgYLen
+    var totalCapacity = framesPerSprite * this.spriteUrls.length
+    // index 数组第0个元素是占位符(值为0)，实际有效帧数 = indexList.length - 1
+    // 使用精确帧数，不额外减安全余量，确保完整截取所有帧且无黑帧
+    var frameCount = 0
+    if (this.indexList.length > 1) {
+      frameCount = this.indexList.length - 1
+    } else if (totalCapacity > 0) {
+      // 无 index 数据的回退：保守估算，仅取最后一张图的第一行作为最小估计
+      // 避免读取最后一张雪碧图的空白格(黑帧)
+      var lastSheetMin = this.imgXLen
+      frameCount = (this.spriteUrls.length - 1) * framesPerSprite + lastSheetMin
+      if (frameCount > totalCapacity) frameCount = totalCapacity
+    }
+    if (frameCount < 1) frameCount = 0
+    // 裁剪参数：始终使用原始格子尺寸 160×90，不偏移不缩放
+    // 避免中心裁剪导致的"放大"效果
+    var cropW = this.imgXSize
+    var cropH = this.imgYSize
+    var qualitySuffix = 'a.jpg'
+    for (i = 0; i < frameCount; i++) {
+      var posInSheet = i % framesPerSprite
+      var col = posInSheet % this.imgXLen
+      var row = Math.floor(posInSheet / this.imgXLen)
+      var x = col * this.imgXSize
+      var y = row * this.imgYSize
+      var spriteIdx = Math.floor(i / framesPerSprite)
+      if (spriteIdx >= this.spriteUrls.length) {
+        break
+      }
+      var baseUrl = this.spriteUrls[spriteIdx]
+      if (baseUrl.indexOf('@') > 0) {
+        baseUrl = baseUrl.split('@')[0]
+      }
+      frameList.push(baseUrl + '@' + x + '-' + y + '-' + cropW + '-' + cropH + qualitySuffix)
+    }
+    if (frameList.length === 0) {
+      this.showCoverOnly()
+      return
+    }
+    this.frameList = frameList
+    this.frameInfoText = '转码 ' + frameList.length + ' 帧'
+    this.showFrameInfo = true
+    this.showProgressBar = true
+    this.showPauseBtn = true
+    this.isPaused = false
+    this.pauseIcon = '/common/images/vid_pause_new.png'
+    this.pauseLabel = '暂停'
+    this.progressWidth = 0
+    this.framesReady = true
+    this.tryStartPlayback()
+  },
+
+  showCoverOnly() {
+    var cover = this.buildStandardCoverUrl(this.pic)
+    if (cover) {
+      this.currentFrame = cover
+    } else {
+      this.currentFrame = '/common/images/icon.png'
+    }
+    if (this.frameTimer) {
+      clearInterval(this.frameTimer)
+      this.frameTimer = null
+    }
+    this.frameList = []
+    this.frameIndex = 0
+    this.playCount = 0
+    this.showProgressBar = false
+    this.showFullscreenBtn = false
+    this.showFrameInfo = false
+    this.isPaused = false
+    this.progressWidth = 0
+  },
+  startFramePlayback() {
+    var self = this
+    if (this.frameList.length === 0) {
+      return
+    }
+    if (this.frameTimer) {
+      clearInterval(this.frameTimer)
+      this.frameTimer = null
+    }
+    this.frameIndex = 0
+    this.playCount = 0
+    this.isPaused = false
+    this.pauseIcon = '/common/images/vid_pause_new.png'
+    this.pauseLabel = '暂停'
+    this.currentFrame = this.frameList[0]
+    this.showFullscreenBtn = false
+    this.updateProgress()
+    // 第1遍：25ms 快速扫过，第2遍恢复正常速度
+    this.frameTimer = setInterval(function() {
+      if (self.isPaused) {
+        return
+      }
+      self.frameIndex = self.frameIndex + 1
+      if (self.frameIndex >= self.frameList.length) {
+        self.frameIndex = 0
+        self.playCount = self.playCount + 1
+        if (self.playCount >= 1) {
+          // 第1遍完成，第2遍恢复正常速度
+          self.showFullscreenBtn = true
+          clearInterval(self.frameTimer)
+          self.frameTimer = null
+          self.frameTimer = setInterval(function() {
+            if (self.isPaused) {
+              return
+            }
+            self.frameIndex = self.frameIndex + 1
+            if (self.frameIndex >= self.frameList.length) {
+              self.frameIndex = 0
+            }
+            self.currentFrame = self.frameList[self.frameIndex]
+            self.updateProgress()
+          }, 700)
+          return
+        }
+      }
+      self.currentFrame = self.frameList[self.frameIndex]
+      self.updateProgress()
+    }, 25)
+  },
+  togglePause() {
+    this.isPaused = !this.isPaused
+    if (this.isPaused) {
+      this.pauseIcon = '/common/images/vid_pause_new.png'
+      this.pauseLabel = '继续'
+    } else {
+      this.pauseIcon = '/common/images/vid_pause_new.png'
+      this.pauseLabel = '暂停'
+    }
+  },
+  updateProgress() {
+    if (this.frameList.length === 0) {
+      this.progressWidth = 0
+      return
+    }
+    var pct = this.frameIndex / this.frameList.length
+    this.progressWidth = Math.round(pct * 312)
+  },
+  loadPlayUrl() {
+    var self = this
+    if (!this.cid) {
+      return
+    }
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/player/playurl?bvid=' + this.bvid + '&cid=' + this.cid + '&qn=32&fnval=0&fourk=0',
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.data && data.data.durl && data.data.durl.length > 0) {
+          self.videoUrl = data.data.durl[0].url
+        }
+      },
+      fail: function() {}
+    })
+  },
+  getCookieValue(cookie, key) {
+    var parts = cookie.split(';')
+    var i = 0
+    for (i = 0; i < parts.length; i++) {
+      var p = parts[i].trim()
+      if (p.indexOf(key + '=') === 0) {
+        return p.substring(key.length + 1)
+      }
+    }
+    return ''
+  },
+  getAuth(callback) {
+    var self = this
+    storage.get({
+      key: 'bili_cookie',
+      success: function(cookie) {
+        if (!cookie || cookie.length < 10) {
+          callback('', '')
+          return
+        }
+        callback(cookie, self.getCookieValue(cookie, 'bili_jct'))
+      },
+      fail: function() {
+        callback('', '')
+      }
+    })
+  },
+  ensureAid(callback) {
+    var self = this
+    if (this.aid) {
+      callback(true)
+      return
+    }
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/view?bvid=' + this.bvid,
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.data && data.data.aid) {
+          self.aid = '' + data.data.aid
+          callback(true)
+        } else {
+          callback(false)
+        }
+      },
+      fail: function() {
+        callback(false)
+      }
+    })
+  },
+  toggleLike() {
+    this.likeRetry = 0
+    this.syncLike(null)
+  },
+  syncLike(done) {
+    var self = this
+    this.ensureAid(function(ok) {
+      if (!ok) {
+        if (done) { done(false) }
+        return
+      }
+      self.getAuth(function(cookie, csrf) {
+        if (!cookie || !csrf) {
+          if (done) { done(false) }
+          return
+        }
+        // HyperBilibili 接口：x/web-interface/archive/like + bvid + like + csrf
+        fetchBridge.fetch({
+          url: 'https://api.bilibili.com/x/web-interface/archive/like',
+          method: 'POST',
+          data: 'bvid=' + self.bvid + '&like=1&csrf=' + csrf,
+          header: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Cookie': cookie,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0',
+            'Referer': 'https://www.bilibili.com',
+            'Origin': 'https://www.bilibili.com',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'zh-CN,zh;q=0.8'
+          },
+          responseType: 'json',
+          timeout: 45000,
+          success: function(res) {
+            var data = res.data
+            if (typeof data === 'string') {
+              data = JSON.parse(data)
+            }
+            if (data && data.code === 0) {
+              self.liked = true
+              self.likeRetry = 0
+              self.likeIcon = '/common/images/vid_liked.png'
+              if (done) { done(true) }
+            } else if (data && data.code === 65006) {
+              self.liked = true
+              self.likeIcon = '/common/images/vid_liked.png'
+              if (done) { done(true) }
+            } else {
+              self.likeRetry = self.likeRetry + 1
+              if (self.likeRetry <= 4) {
+                setTimeout(function() {
+                  self.syncLike(done)
+                }, 1500)
+              } else {
+                if (done) { done(false) }
+              }
+            }
+          },
+          fail: function() {
+            self.likeRetry = self.likeRetry + 1
+            if (self.likeRetry <= 4) {
+              setTimeout(function() {
+                self.syncLike(done)
+              }, 1500)
+            } else {
+              if (done) { done(false) }
+            }
+          }
+        })
+      })
+    })
+  },
+  toggleCoin() {
+    this.coinRetry = 0
+    this.syncCoin(null)
+  },
+  syncCoin(done) {
+    var self = this
+    self.getAuth(function(cookie, csrf) {
+      if (!cookie || !csrf) {
+        if (done) { done(false) }
+        return
+      }
+      // 照搬 HyperBilibili：bvid + multiply + csrf，不用 aid
+      fetchBridge.fetch({
+        url: 'https://api.bilibili.com/x/web-interface/coin/add',
+        method: 'POST',
+        data: 'bvid=' + self.bvid + '&multiply=1&csrf=' + csrf,
+        header: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': cookie,
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0',
+          'Referer': 'https://www.bilibili.com',
+          'Origin': 'https://www.bilibili.com',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'zh-CN,zh;q=0.8'
+        },
+        responseType: 'json',
+        timeout: 45000,
+        success: function(res) {
+          var data = res.data
+          if (typeof data === 'string') {
+            data = JSON.parse(data)
+          }
+          if (data && data.code === 0) {
+            self.coined = true
+            self.coinRetry = 0
+            self.coinIcon = '/common/images/vid_coined.png'
+            if (done) { done(true) }
+          } else if (data && data.code === 34005) {
+            self.coined = true
+            self.coinRetry = 0
+            self.coinIcon = '/common/images/vid_coined.png'
+            if (done) { done(true) }
+          } else {
+            self.coinRetry = self.coinRetry + 1
+            if (self.coinRetry <= 4) {
+              setTimeout(function() {
+                self.syncCoin(done)
+              }, 1500)
+            } else {
+              if (done) { done(false) }
+            }
+          }
+        },
+        fail: function() {
+          self.coinRetry = self.coinRetry + 1
+          if (self.coinRetry <= 4) {
+            setTimeout(function() {
+              self.syncCoin(done)
+            }, 1500)
+          } else {
+            if (done) { done(false) }
+          }
+        }
+      })
+    })
+  },
+  toggleFavorite() {
+    this.favRetry = 0
+    this.syncFavorite(null)
+  },
+  loadAiSummary() {
+    router.push({ uri: '/aisummary', params: { bvid: this.bvid, cid: this.cid, title: this.title, upName: this.upName, upMid: this.upMid, pic: this.pic, desc: this.desc } })
+  },
+  openUpHome() {
+    if (!this.upMid) {
+      return
+    }
+    router.push({ uri: '/uphome', params: { mid: this.upMid, name: this.upName, face: this.upFace } })
+  },
+  showQrCode() {
+    if (!this.bvid) {
+      return
+    }
+    router.push({ uri: '/watchonphone', params: { type: 'video', id: this.bvid } })
+  },
+  goFullscreen() {
+    if (!this.bvid) {
+      return
+    }
+    router.push({ uri: '/fullscreen', params: {
+      bvid: this.bvid,
+      cid: this.cid,
+      aid: this.aid,
+      title: this.title,
+      pic: this.pic,
+      offline: this.offline,
+      upName: this.upName,
+      likeCountText: this.likeCountText,
+      coinCountText: this.coinCountText,
+      favCountText: this.favCountText,
+      likeIcon: this.likeIcon,
+      coinIcon: this.coinIcon,
+      favIcon: this.favIcon,
+      serverMode: this.useServerMode,
+      serverAddr: this.serverAddr
+    } })
+  },
+  fetchAiSummary(cookie) {
+    var self = this
+    var url = 'https://api.bilibili.com/x/web-interface/view/conclusion/get?bvid=' + this.bvid + '&cid=' + this.cid
+    if (this.upMid) {
+      url = url + '&up_mid=' + this.upMid
+    }
+    var header = {
+      'User-Agent': 'Mozilla/5.0',
+      'Referer': 'https://www.bilibili.com/video/' + this.bvid
+    }
+    if (cookie && cookie.length > 10) {
+      header['Cookie'] = cookie
+    }
+    fetchBridge.fetch({
+      url: url,
+      header: header,
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        var summary = ''
+        if (data && data.data && data.data.model_result && data.data.model_result.summary) {
+          summary = data.data.model_result.summary
+        } else if (data && data.data && data.data.summary) {
+          summary = data.data.summary
+        }
+        if (summary) {
+          if (summary.length > 48) {
+            summary = summary.substring(0, 48) + '...'
+          }
+          self.aiText = summary
+        } else {
+          self.fetchQuarkAiSummary(cookie)
+        }
+      },
+      fail: function() {
+        self.fetchQuarkAiSummary(cookie)
+      }
+    })
+  },
+  parseQuarkSummary(data) {
+    if (!data) {
+      return ''
+    }
+    if (typeof data === 'string') {
+      try {
+        data = JSON.parse(data)
+      } catch (e) {
+        return data
+      }
+    }
+    if (data.summary) {
+      return data.summary
+    }
+    if (data.answer) {
+      return data.answer
+    }
+    if (data.data && data.data.summary) {
+      return data.data.summary
+    }
+    if (data.data && data.data.answer) {
+      return data.data.answer
+    }
+    if (data.data && data.data.result) {
+      return data.data.result
+    }
+    if (data.result && data.result.summary) {
+      return data.result.summary
+    }
+    return ''
+  },
+  fetchQuarkAiSummary(cookie) {
+    var self = this
+    var prompt = '请用中文简短总结这个B站视频，控制在50字内。标题：' + this.title + ' BV号：' + this.bvid + ' UP主：' + this.upName
+    var body = JSON.stringify({
+      q: prompt,
+      query: prompt,
+      prompt: prompt,
+      title: this.title,
+      bvid: this.bvid,
+      url: 'https://www.bilibili.com/video/' + this.bvid
+    })
+    var header = {
+      'Content-Type': 'application/json',
+      'User-Agent': 'Mozilla/5.0',
+      'Referer': 'https://quark.cn/'
+    }
+    if (cookie && cookie.length > 10) {
+      header['Cookie'] = cookie
+    }
+    fetchBridge.fetch({
+      url: 'https://quark.sm.cn/api/rest?method=ai.video.summary',
+      method: 'POST',
+      data: body,
+      header: header,
+      responseType: 'json',
+      success: function(res) {
+        var summary = self.parseQuarkSummary(res.data)
+        if (summary) {
+          if (summary.length > 48) {
+            summary = summary.substring(0, 48) + '...'
+          }
+          self.aiText = summary
+        } else {
+        }
+      },
+      fail: function() {
+      }
+    })
+  },
+  toggleFollow() {
+    var self = this
+    if (!this.upMid) {
+      return
+    }
+    this.getAuth(function(cookie, csrf) {
+      if (!cookie || !csrf) {
+        return
+      }
+      fetchBridge.fetch({
+        url: 'https://api.bilibili.com/x/relation/modify',
+        method: 'POST',
+        data: 'fid=' + self.upMid + '&act=1&re_src=11&csrf=' + csrf,
+        header: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': cookie,
+          'User-Agent': 'Mozilla/5.0',
+          'Referer': 'https://space.bilibili.com/' + self.upMid
+        },
+        responseType: 'json',
+        success: function(res) {
+          var data = res.data
+          if (typeof data === 'string') {
+            data = JSON.parse(data)
+          }
+          if (data && data.code === 0) {
+            self.followed = true
+          } else {
+          }
+        },
+        fail: function() {
+        }
+      })
+    })
+  },
+  syncFavorite(done) {
+    var self = this
+    this.ensureAid(function(ok) {
+      if (!ok) {
+        if (done) { done(false) }
+        return
+      }
+      self.getAuth(function(cookie, csrf) {
+        var mid = self.getCookieValue(cookie, 'DedeUserID')
+        if (!cookie || !csrf || !mid) {
+          if (done) { done(false) }
+          return
+        }
+        fetchBridge.fetch({
+          url: 'https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=' + mid + '&type=2',
+          header: {
+            'Cookie': cookie,
+            'User-Agent': 'Mozilla/5.0',
+            'Referer': 'https://www.bilibili.com/video/' + self.bvid
+          },
+          responseType: 'json',
+          timeout: 30000,
+          success: function(res) {
+            var data = res.data
+            if (typeof data === 'string') {
+              data = JSON.parse(data)
+            }
+            var mediaId = ''
+            if (data && data.data && data.data.list && data.data.list.length > 0) {
+              mediaId = data.data.list[0].id || data.data.list[0].media_id || ''
+            }
+            if (!mediaId) {
+              self.favRetry = self.favRetry + 1
+              if (self.favRetry <= 2) {
+                setTimeout(function() {
+                  self.syncFavorite(done)
+                }, 2000)
+              } else {
+                if (done) { done(false) }
+              }
+              return
+            }
+            self.addFavorite(cookie, csrf, mediaId, done)
+          },
+          fail: function() {
+            self.favRetry = self.favRetry + 1
+            if (self.favRetry <= 2) {
+              setTimeout(function() {
+                self.syncFavorite(done)
+              }, 2000)
+            } else {
+              if (done) { done(false) }
+            }
+          }
+        })
+      })
+    })
+  },
+  addFavorite(cookie, csrf, mediaId, done) {
+    var self = this
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/v3/fav/resource/deal',
+      method: 'POST',
+      data: 'rid=' + this.aid + '&type=2&add_media_ids=' + mediaId + '&del_media_ids=&csrf=' + csrf,
+      header: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cookie': cookie,
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://www.bilibili.com/video/' + this.bvid
+      },
+      responseType: 'json',
+      timeout: 30000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.code === 0) {
+          self.faved = true
+          self.favRetry = 0
+          self.favIcon = '/common/images/vid_stared.png'
+          if (done) { done(true) }
+        } else {
+          if (done) { done(false) }
+        }
+      },
+      fail: function() {
+        self.favRetry = self.favRetry + 1
+        if (self.favRetry <= 2) {
+          setTimeout(function() {
+            self.addFavorite(cookie, csrf, mediaId, done)
+          }, 2000)
+        } else {
+          if (done) { done(false) }
+        }
+      }
+    })
+  },
+  tripleAction() {
+    var self = this
+    this.syncLike(function() {
+      self.syncCoin(function() {
+        self.syncFavorite(function() {
+        })
+      })
+    })
+  },
+  goComments() {
+    router.push({ uri: '/comments', params: { bvid: this.bvid, title: this.title } })
+  },
+  goPostComment() {
+    router.push({ uri: '/postcomment', params: { bvid: this.bvid, title: this.title } })
+  },
+  loadCommentsForCache() {
+    var self = this
+    if (!this.aid) {
+      return
+    }
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/v2/reply?type=1&oid=' + this.aid + '&sort=1&ps=3&pn=1',
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        var list = []
+        if (data && data.data && data.data.replies) {
+          list = data.data.replies
+        } else if (data && data.replies) {
+          list = data.replies
+        }
+        if (list && list.length > 0) {
+          var i = 0
+          for (i = 0; i < list.length && i < 3; i++) {
+            var item = list[i]
+            var n = i + 1
+            var member = item.member || {}
+            self['c' + n + 'User'] = member.uname || '用户'
+            self['c' + n + 'Text'] = item.content && item.content.message ? item.content.message.substring(0, 40) : ''
+          }
+        }
+      },
+      fail: function() {}
+    })
+  },
+  addToWatchLater() {
+    var self = this
+    if (!this.bvid) {
+      return
+    }
+    var item = {
+      bvid: this.bvid,
+      title: this.title || 'B站视频',
+      pic: this.pic || '/common/images/icon.png',
+      upName: this.upName || 'UP主',
+      upFace: this.upFace || '/common/images/icon.png',
+      upMid: this.upMid || '',
+      c1User: this.c1User || '',
+      c1Text: this.c1Text || '',
+      c2User: this.c2User || '',
+      c2Text: this.c2Text || '',
+      c3User: this.c3User || '',
+      c3Text: this.c3Text || ''
+    }
+    storage.get({
+      key: 'bili_watchlater',
+      success: function(data) {
+        var list = []
+        try {
+          list = JSON.parse(data || '[]')
+        } catch (e) {
+          list = []
+        }
+        if (!Array.isArray(list)) {
+          list = []
+        }
+        var exists = false
+        var i = 0
+        for (i = 0; i < list.length; i++) {
+          if (list[i] && list[i].bvid === self.bvid) {
+            exists = true
+            break
+          }
+        }
+        if (exists) {
+          return
+        }
+        list.unshift(item)
+        if (list.length > 30) {
+          list = list.slice(0, 30)
+        }
+        storage.set({
+          key: 'bili_watchlater',
+          value: JSON.stringify(list)
+        })
+        router.push({
+          uri: '/downloadprogress',
+          params: {
+            bvid: self.bvid,
+            cid: self.cid || '',
+            title: self.title || 'B站视频',
+            pic: self.pic || '/common/images/icon.png',
+            upName: self.upName || 'UP主',
+            upFace: self.upFace || '/common/images/icon.png',
+            upMid: self.upMid || '',
+            stat: self.stat || ''
+          }
+        })
+      },
+      fail: function() {
+        storage.set({
+          key: 'bili_watchlater',
+          value: JSON.stringify([item])
+        })
+        router.push({
+          uri: '/downloadprogress',
+          params: {
+            bvid: self.bvid,
+            cid: self.cid || '',
+            title: self.title || 'B站视频',
+            pic: self.pic || '/common/images/icon.png',
+            upName: self.upName || 'UP主',
+            upFace: self.upFace || '/common/images/icon.png',
+            upMid: self.upMid || '',
+            stat: self.stat || ''
+          }
+        })
+      }
+    })
+  },
+  downloadVideoForOffline() {
+    var self = this
+    // 已有帧数据，直接缓存
+    if (this.frameList.length > 0) {
+      self.saveOfflineData()
+      return
+    }
+    // 需要 cid，先获取
+    if (!this.cid) {
+      fetchBridge.fetch({
+        url: 'https://api.bilibili.com/x/web-interface/view?bvid=' + this.bvid,
+        responseType: 'json',
+        success: function(res) {
+          var data = res.data
+          if (typeof data === 'string') data = JSON.parse(data)
+          if (data && data.data) {
+            self.cid = data.data.cid ? '' + data.data.cid : ''
+            self.aid = data.data.aid ? '' + data.data.aid : ''
+            if (data.data.pic) self.pic = data.data.pic
+            if (data.data.owner) self.applyOwner(data.data.owner)
+            if (data.data.stat) self.applyStat(data.data.stat)
+            if (!self.title || self.title === '手环上看 B 站是什么体验？') {
+              self.title = data.data.title || self.title
+            }
+            if (self.cid) {
+              self.fetchVideoshotForOffline()
+            } else {
+            }
+          } else {
+          }
+        },
+        fail: function() {
+        }
+      })
+      return
+    }
+    // 已有 cid，直接获取视频帧
+    self.fetchVideoshotForOffline()
+  },
+  fetchVideoshotForOffline() {
+    var self = this
+    if (!this.cid) {
+      return
+    }
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/player/videoshot?bvid=' + this.bvid + '&cid=' + this.cid + '&index=1',
+      responseType: 'json',
+      timeout: 15000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') data = JSON.parse(data)
+        if (data && data.code === 0 && data.data) {
+          var d = data.data
+          self.imgXLen = d.img_x_len || 10
+          self.imgYLen = d.img_y_len || 10
+          self.imgXSize = d.img_x_size || 160
+          self.imgYSize = d.img_y_size || 90
+          var urls = []
+          if (d.image && d.image.length > 0) {
+            var i = 0
+            for (i = 0; i < d.image.length; i++) {
+              var url = d.image[i]
+              if (url.indexOf('//') === 0) url = 'https:' + url
+              if (url.indexOf('http') === 0) urls.push(url)
+            }
+          }
+          self.indexList = d.index || []
+          if (urls.length > 0) {
+            self.spriteUrls = urls
+            self.buildTranscodeFrames()
+            self.saveOfflineData()
+            return
+          }
+        }
+      },
+      fail: function() {
+      }
+    })
+  },
+  saveOfflineData() {
+    var self = this
+    if (this.frameList.length === 0) {
+      return
+    }
+    var offlineData = {
+      bvid: this.bvid,
+      cid: this.cid,
+      aid: this.aid,
+      title: this.title,
+      pic: this.pic,
+      upName: this.upName,
+      upFace: this.upFace,
+      upMid: this.upMid,
+      stat: this.stat,
+      frameList: this.frameList,
+      spriteUrls: this.spriteUrls,
+      imgXLen: this.imgXLen,
+      imgYLen: this.imgYLen,
+      imgXSize: this.imgXSize,
+      imgYSize: this.imgYSize,
+      indexList: this.indexList,
+      transcodeQuality: this.transcodeQuality,
+      timestamp: Date.now()
+    }
+    storage.set({
+      key: 'bili_offline_' + this.bvid,
+      value: JSON.stringify(offlineData),
+      success: function() {
+      },
+      fail: function() {
+      }
+    })
+  },
+  cleanupPlayback() {
+    // 停止帧播放定时器
+    if (this.frameTimer) {
+      clearInterval(this.frameTimer)
+      this.frameTimer = null
+    }
+    // 停止服务器轮询定时器
+    if (this.serverPollTimer) {
+      clearInterval(this.serverPollTimer)
+      this.serverPollTimer = null
+    }
+    // 清空所有帧数据
+    this.frameList = []
+    this.frameIndex = 0
+    this.playCount = 0
+    this.isPaused = false
+    this.showPauseBtn = false
+    this.showProgressBar = false
+    this.showFullscreenBtn = false
+    this.showFrameInfo = false
+    this.progressWidth = 0
+    this.spriteUrls = []
+    this.indexList = []
+    this.imgXLen = 10
+    this.imgYLen = 10
+    this.imgXSize = 160
+    this.imgYSize = 90
+    // 重置加载标志
+    this.framesReady = false
+    this.pageReady = false
+    this.currentFrame = '/common/images/icon.png'
+    // 重置视频信息
+    this.bvid = ''
+    this.cid = ''
+    this.aid = ''
+    this.videoUrl = ''
+    this.title = ''
+    this.pic = '/common/images/icon.png'
+    this.desc = ''
+    this.upName = ''
+    this.upFace = '/common/images/icon.png'
+    this.upMid = ''
+    this.stat = ''
+    this.offline = 'false'
+    // 关闭屏幕常亮（如果之前在视频页开启了）
+    storage.get({
+      key: 'bili_keep_screen_on',
+      success: function(data) {
+        if (data !== 'true') {
+          brightness.setKeepScreenOn({
+            keepScreenOn: false,
+            success: function() {},
+            fail: function() {}
+          })
+        }
+      },
+      fail: function() {}
+    })
+  },
+  back() {
+    this.cleanupPlayback()
+    router.back()
+  },
+  onBackPress() {
+    this.cleanupPlayback()
+    router.back()
+    return true
+  },
+  onDestroy() {
+    this.cleanupPlayback()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_pink.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 4px 12px;
+
+}
+.header {
+  width: 312px;
+  height: 38px;
+  flex-direction: row;
+  align-items: center;
+}
+.back-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+}
+.header-title {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.player {
+  width: 312px;
+  height: 176px;
+  border-radius: 20px;
+  background-color: #1a1a1a;
+  justify-content: flex-end;
+  flex-direction: column;
+  margin-top: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.poster-img {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 312px;
+  height: 176px;
+  border-radius: 20px;
+  object-fit: cover;
+}
+.player-tip {
+  width: 312px;
+  color: rgba(255,255,255,0.7);
+  font-size: 13px;
+  font-weight: bold;
+  margin-top: 4px;
+  text-align: center;
+}
+/* 全屏按钮 - 黑色液态玻璃 */
+.fullscreen-label {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: bold;
+  background-color: rgba(0,0,0,0.55);
+  border-radius: 12px;
+  padding: 3px 10px;
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.18);
+}
+/* 转码帧数显示 - 进度条下方 */
+.frame-count-text {
+  width: 312px;
+  color: rgba(255,255,255,0.6);
+  font-size: 11px;
+  text-align: center;
+  margin-top: 4px;
+}
+.title {
+  width: 312px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 8px;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.stat-row {
+  width: 312px;
+  flex-direction: row;
+  margin-top: 4px;
+  justify-content: space-between;
+  align-items: center;
+}
+.stat-text {
+  color: rgba(255,255,255,0.6);
+  font-size: 11px;
+}
+.up-link {
+  flex-direction: row;
+  align-items: center;
+}
+.up-face {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+}
+.up-name {
+  color: rgba(255,255,255,0.6);
+  font-size: 11px;
+  margin-left: 6px;
+}
+.actions {
+  width: 312px;
+  height: 64px;
+  margin-top: 10px;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+/* 操作按钮 - 黑色液态玻璃突起 */
+.action-btn {
+  width: 58px;
+  height: 64px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0,0,0,0.5);
+  border-radius: 16px;
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+}
+.action-icon-img {
+  width: 38px;
+  height: 38px;
+}
+.action-count {
+  color: rgba(255,255,255,0.7);
+  font-size: 10px;
+  margin-top: 4px;
+}
+.action-label {
+  color: rgba(255,255,255,0.7);
+  font-size: 10px;
+  margin-top: 4px;
+}
+.progress-bar {
+  width: 312px;
+  height: 6px;
+  margin-top: 8px;
+  border-radius: 3px;
+  background-color: rgba(255,255,255,0.15);
+}
+.progress-fill {
+  height: 6px;
+  border-radius: 3px;
+  background-color: #fb7299;
+}
+/* 暂停条 - 黑色液态玻璃突起 */
+.pause-bar {
+  width: 312px;
+  height: 40px;
+  margin-top: 8px;
+  border-radius: 20px;
+  background-color: rgba(0,0,0,0.6);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.15);
+  justify-content: center;
+  align-items: center;
+  flex-direction: row;
+}
+.pause-bar-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+}
+.pause-bar-text {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: bold;
+}
+/* 底部按钮 - 黑色液态玻璃 */
+.bottom-btns {
+  width: 312px;
+  flex-direction: row;
+  margin-top: 10px;
+  justify-content: center;
+  gap: 8px;
+}
+.comment-btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 20px;
+  background-color: rgba(0,0,0,0.6);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.15);
+  justify-content: center;
+  align-items: center;
+}
+.comment-text {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+}
+.post-btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 20px;
+  background-color: rgba(0,0,0,0.6);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.15);
+  justify-content: center;
+  align-items: center;
+}
+.post-text {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+}
+.note {
+  width: 300px;
+  color: rgba(255,255,255,0.3);
+  font-size: 9px;
+  text-align: center;
+  margin-top: 6px;
+}
+</style>

@@ -1,0 +1,83 @@
+<template>
+  <div class="page">
+    <image class="splash-bg" src="{{splashSrc}}" if="{{splashReady}}" />
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import storage from '@system.storage'
+import brightness from '@system.brightness'
+
+export default {
+  private: {
+    timer: null,
+    splashReady: false,
+    splashSrc: '/common/images/splash/splash_01.png'
+  },
+  onShow() {
+  },
+  onInit() {
+    var self = this
+    // 启动时检查是否开启了屏幕常亮，若开启则立即生效
+    storage.get({
+      key: 'bili_keep_screen_on',
+      success: function(data) {
+        if (data === 'true') {
+          brightness.setKeepScreenOn({
+            keepScreenOn: true,
+            success: function() {},
+            fail: function() {}
+          })
+        }
+      },
+      fail: function() {}
+    })
+    this.loadSplashImage()
+    this.timer = setTimeout(function() {
+      self.timer = null
+      router.replace({ uri: '/home' })
+    }, 5000)
+  },
+  loadSplashImage() {
+    var self = this
+    storage.get({
+      key: 'bili_splash_index',
+      success: function(data) {
+        var idx = parseInt(data) || 1
+        if (idx < 1 || idx > 10) {
+          idx = 1
+        }
+        self.splashSrc = '/common/images/splash/splash_' + (idx < 10 ? '0' + idx : idx) + '.png'
+        self.splashReady = true
+      },
+      fail: function() {
+        self.splashSrc = '/common/images/splash/splash_01.png'
+        self.splashReady = true
+      }
+    })
+  },
+  onDestroy() {
+    if (this.timer) {
+      clearTimeout(this.timer)
+      this.timer = null
+    }
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  height: 480px;
+  background-color: #ffffff;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+}
+.splash-bg {
+  width: 336px;
+  height: 480px;
+}
+</style>

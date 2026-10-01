@@ -1,0 +1,13 @@
+{
+  "name": "wristbiliv2.0.0",
+  "version": "2.0.0",
+  "private": true,
+  "description": "WristBili - 手环轻量 B 站快应用",
+  "scripts": {
+    "build": "aiot build",
+    "release": "aiot release"
+  },
+  "devDependencies": {
+    "aiot-toolkit": "^2.0.5"
+  }
+}

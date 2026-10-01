@@ -1,0 +1,17 @@
+<script>
+import fetchBridge from './common/scripts/fetchbridge'
+
+export default {
+  globalData: {
+    appName: 'WristBili',
+    apiBase: 'https://api.bilibili.com'
+  },
+  onCreate() {
+    console.log('WristBili 启动')
+    fetchBridge.init()
+  },
+  onDestroy() {
+    fetchBridge.destroy()
+  }
+}
+</script>

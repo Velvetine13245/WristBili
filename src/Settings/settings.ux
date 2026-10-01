@@ -1,0 +1,525 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <text class="back-text" onclick="back">⇦ 设置</text>
+    </div>
+
+    <div class="app-card" onclick="goDeveloper">
+      <image class="app-icon" src="/common/images/settings_about.png" />
+      <div class="app-info">
+        <text class="app-name">WristBili</text>
+        <text class="app-sub">版本: v2.1.0 手环版</text>
+        <text class="app-dev">开发者: @Velvetine</text>
+      </div>
+      <text class="app-arrow">›</text>
+    </div>
+
+    <div class="account-card" onclick="goMy">
+      <image class="account-avatar" src="{{accountAvatar}}" />
+      <div class="account-info">
+        <text class="account-name">{{accountName}}</text>
+        <text class="account-sub">{{accountStatus}}</text>
+      </div>
+      <text class="app-arrow">›</text>
+    </div>
+
+    <div class="setting-card" onclick="switchRecMode">
+      <image class="row-icon-img" src="/common/images/settings_freshtype.png" />
+      <text class="setting-title">视频推荐相关性</text>
+      <text class="setting-value">{{recModeNum}}</text>
+    </div>
+
+    <div class="setting-card" onclick="togglePlaySource">
+      <image class="row-icon-img" src="/common/images/settings_playsource.png" />
+      <text class="setting-title">播放源</text>
+      <text class="setting-value">{{playSourceName}}</text>
+    </div>
+
+    <div class="setting-card" onclick="editServerAddr" if="{{playSource === 'server'}}">
+      <image class="row-icon-img" src="/common/images/settings_server.jpg" />
+      <text class="setting-title">服务器地址</text>
+      <text class="setting-arrow">›</text>
+    </div>
+
+    <div class="setting-card" onclick="switchTranscodeQuality">
+      <image class="row-icon-img" src="/common/images/settings_quality.png" />
+      <text class="setting-title">转码画质</text>
+      <text class="setting-value">{{transcodeQualityName}}</text>
+    </div>
+
+    <div class="setting-card" onclick="goBridge">
+      <div class="row-icon bridge-icon">
+        <text class="icon-text">⇄</text>
+      </div>
+      <text class="setting-title">网桥</text>
+      <text class="setting-value">{{bridgeStatusName}}</text>
+    </div>
+
+    <div class="setting-card" onclick="toggleKeepScreenOn">
+      <image class="row-icon-img" src="/common/images/settings_keepscreen.png" />
+      <text class="setting-title">屏幕常亮</text>
+      <text class="setting-value">{{keepScreenOnText}}</text>
+    </div>
+
+    <div class="setting-card" onclick="goSelectSplash">
+      <image class="row-icon-img" src="/common/images/settings_startuppage.png" />
+      <text class="setting-title">更换开屏</text>
+      <text class="setting-arrow">›</text>
+    </div>
+
+    <div class="setting-card" onclick="goCache">
+      <image class="row-icon-img" src="/common/images/settings_removetmp.png" />
+      <text class="setting-title">清除缓存</text>
+      <text class="setting-arrow">›</text>
+    </div>
+
+    <div class="setting-card" onclick="doLogout">
+      <image class="row-icon-img" src="/common/images/settings_logout.png" />
+      <text class="setting-title">退出登录</text>
+      <text class="setting-arrow">›</text>
+    </div>
+
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import storage from '@system.storage'
+import brightness from '@system.brightness'
+import fetchBridge from '../common/scripts/fetchbridge'
+
+export default {
+  private: {
+    status: '',
+    recMode: 'auto',
+    recModeName: '自动',
+    recModeNum: '3',
+    playSource: 'cover',
+    playSourceName: '封面',
+    serverAddr: '',
+    transcodeQuality: 'standard',
+    transcodeQualityName: '标准',
+    bridgeStatusName: '关闭',
+    accountAvatar: '/common/images/icon.png',
+    accountName: '未登录',
+    accountStatus: '点击登录账号',
+    keepScreenOn: false,
+    keepScreenOnText: '关',
+  },
+  onInit() {
+    var self = this
+    storage.get({
+      key: 'bili_recmode',
+      success: function(data) {
+        if (data === 'personal' || data === 'popular' || data === 'auto') {
+          self.recMode = data
+        }
+        self.updateRecMode()
+      },
+      fail: function() {
+        self.updateRecMode()
+      }
+    })
+    storage.get({
+      key: 'bili_playsource',
+      success: function(data) {
+        if (data === 'transcode') {
+          self.playSource = 'transcode'
+          self.playSourceName = '转码'
+        } else if (data === 'server') {
+          self.playSource = 'server'
+          self.playSourceName = '服务器（不能使用）'
+        } else {
+          self.playSource = 'cover'
+          self.playSourceName = '封面'
+        }
+      },
+      fail: function() {
+        self.playSource = 'cover'
+        self.playSourceName = '封面'
+      }
+    })
+    storage.get({
+      key: 'bili_transcode_quality',
+      success: function(data) {
+        if (data === '120p' || data === '480p' || data === '1080p') {
+          self.transcodeQuality = data
+        } else {
+          self.transcodeQuality = 'standard'
+        }
+        self.updateTranscodeQuality()
+      },
+      fail: function() {
+        self.transcodeQuality = 'standard'
+        self.updateTranscodeQuality()
+      }
+    })
+    this.loadAccountInfo()
+    this.updateBridgeStatus()
+    this.loadKeepScreenOn()
+  },
+  onShow() {
+    this.loadAccountInfo()
+    this.updateBridgeStatus()
+    this.loadKeepScreenOn()
+  },
+  updateBridgeStatus() {
+    var s = fetchBridge.getStatus()
+    if (s === 'disabled') {
+      this.bridgeStatusName = '关闭'
+    } else if (s === 'ready') {
+      this.bridgeStatusName = '就绪'
+    } else {
+      this.bridgeStatusName = '连接中'
+    }
+  },
+  goBridge() {
+    router.push({ uri: '/bridge' })
+  },
+  loadAccountInfo() {
+    var self = this
+    storage.get({
+      key: 'bili_cookie',
+      success: function(cookie) {
+        if (cookie && cookie.length > 10) {
+          self.accountName = '已登录'
+          self.accountStatus = '查看个人主页'
+          storage.get({
+            key: 'bili_avatar_cached',
+            success: function(avatar) {
+              if (avatar && avatar.length > 5) {
+                self.accountAvatar = avatar
+              }
+            },
+            fail: function() {}
+          })
+          storage.get({
+            key: 'bili_uname_cached',
+            success: function(uname) {
+              if (uname && uname.length > 0) {
+                self.accountName = uname
+              }
+            },
+            fail: function() {}
+          })
+        } else {
+          self.accountName = '未登录'
+          self.accountStatus = '点击登录账号'
+        }
+      },
+      fail: function() {
+        self.accountName = '未登录'
+        self.accountStatus = '点击登录账号'
+      }
+    })
+  },
+  goMy() {
+    router.push({ uri: '/my' })
+  },
+  updateRecMode() {
+    if (this.recMode === 'personal') {
+      this.recModeName = '个性化'
+      this.recModeNum = '1'
+    } else if (this.recMode === 'popular') {
+      this.recModeName = '热门'
+      this.recModeNum = '2'
+    } else {
+      this.recModeName = '自动'
+      this.recModeNum = '3'
+    }
+  },
+  switchRecMode() {
+    if (this.recMode === 'auto') {
+      this.recMode = 'personal'
+    } else if (this.recMode === 'personal') {
+      this.recMode = 'popular'
+    } else {
+      this.recMode = 'auto'
+    }
+    storage.set({ key: 'bili_recmode', value: this.recMode })
+    this.updateRecMode()
+    this.status = '已设为：' + this.recModeName
+  },
+  togglePlaySource() {
+    if (this.playSource === 'transcode') {
+      this.playSource = 'cover'
+      this.playSourceName = '封面'
+    } else if (this.playSource === 'cover') {
+      this.playSource = 'server'
+      this.playSourceName = '服务器（不能使用）'
+    } else {
+      this.playSource = 'transcode'
+      this.playSourceName = '转码'
+    }
+    storage.set({ key: 'bili_playsource', value: this.playSource })
+  },
+  editServerAddr() {
+    var self = this
+    storage.get({
+      key: 'bili_server_addr',
+      success: function(data) {
+        self.serverAddr = data || ''
+      },
+      fail: function() {}
+    })
+    router.push({ uri: '/serverconfig' })
+  },
+  updateTranscodeQuality() {
+    if (this.transcodeQuality === '120p') {
+      this.transcodeQualityName = '120P'
+    } else if (this.transcodeQuality === '480p') {
+      this.transcodeQualityName = '480P'
+    } else if (this.transcodeQuality === '1080p') {
+      this.transcodeQualityName = '1080P'
+    } else {
+      this.transcodeQualityName = '标准'
+    }
+  },
+  switchTranscodeQuality() {
+    if (this.transcodeQuality === '120p') {
+      this.transcodeQuality = 'standard'
+    } else if (this.transcodeQuality === 'standard') {
+      this.transcodeQuality = '480p'
+    } else if (this.transcodeQuality === '480p') {
+      this.transcodeQuality = '1080p'
+    } else {
+      this.transcodeQuality = '120p'
+    }
+    storage.set({ key: 'bili_transcode_quality', value: this.transcodeQuality })
+    this.updateTranscodeQuality()
+    this.status = '转码画质已设为：' + this.transcodeQualityName
+  },
+  loadKeepScreenOn() {
+    var self = this
+    storage.get({
+      key: 'bili_keep_screen_on',
+      success: function(data) {
+        self.keepScreenOn = (data === 'true')
+        self.keepScreenOnText = self.keepScreenOn ? '开' : '关'
+      },
+      fail: function() {
+        self.keepScreenOn = false
+        self.keepScreenOnText = '关'
+      }
+    })
+  },
+  toggleKeepScreenOn() {
+    var self = this
+    this.keepScreenOn = !this.keepScreenOn
+    this.keepScreenOnText = this.keepScreenOn ? '开' : '关'
+    storage.set({ key: 'bili_keep_screen_on', value: this.keepScreenOn ? 'true' : 'false' })
+    brightness.setKeepScreenOn({
+      keepScreenOn: this.keepScreenOn,
+      success: function() {},
+      fail: function() {}
+    })
+    this.status = '屏幕常亮已' + (this.keepScreenOn ? '开启' : '关闭')
+  },
+  goSelectSplash() {
+    router.push({ uri: '/selectsplash' })
+  },
+  goCache() {
+    router.push({ uri: '/cache' })
+  },
+  doLogout() {
+    storage.delete({ key: 'bili_cookie' })
+    storage.delete({ key: 'bili_login_ok' })
+    storage.delete({ key: 'bili_login_url' })
+    storage.delete({ key: 'bili_avatar_cached' })
+    storage.delete({ key: 'bili_uname_cached' })
+    storage.set({ key: 'bili_recmode', value: 'popular' })
+    this.recMode = 'popular'
+    this.updateRecMode()
+    this.accountName = '未登录'
+    this.accountStatus = '点击登录账号'
+    this.accountAvatar = '/common/images/icon.png'
+    this.status = '已退出登录'
+  },
+  goDeveloper() {
+    router.push({ uri: '/developer' })
+  },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_blue.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 10px;
+
+}
+.header {
+  width: 316px;
+  height: 50px;
+  flex-direction: row;
+  align-items: center;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: bold;
+}
+.app-card {
+  width: 316px;
+  height: 84px;
+  margin-top: 12px;
+  border-radius: 24px;
+  background-color: rgba(233,30,99,0.25);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  flex-direction: row;
+  align-items: center;
+  padding: 0 16px;
+}
+.app-info {
+  flex: 1;
+  flex-direction: column;
+}
+.app-name {
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: bold;
+}
+.app-sub {
+  color: rgba(255,255,255,0.75);
+  font-size: 12px;
+  margin-top: 3px;
+}
+.app-dev {
+  color: rgba(255,255,255,0.55);
+  font-size: 11px;
+  margin-top: 2px;
+}
+.app-arrow {
+  color: rgba(255,255,255,0.6);
+  font-size: 22px;
+}
+.app-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  margin-right: 14px;
+  flex-shrink: 0;
+}
+.account-card {
+  width: 316px;
+  height: 76px;
+  margin-top: 8px;
+  border-radius: 24px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  flex-direction: row;
+  align-items: center;
+  padding: 0 16px;
+}
+.account-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
+  margin-right: 14px;
+  flex-shrink: 0;
+}
+.account-info {
+  flex: 1;
+  flex-direction: column;
+}
+.account-name {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: bold;
+}
+.account-sub {
+  color: rgba(255,255,255,0.5);
+  font-size: 12px;
+  margin-top: 3px;
+}
+.setting-card {
+  width: 316px;
+  height: 92px;
+  margin-top: 8px;
+  border-radius: 24px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  flex-direction: row;
+  align-items: center;
+  padding: 0 20px;
+}
+.row-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 26px;
+  background-color: rgba(255,255,255,0.08);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.06);
+  margin-right: 18px;
+  flex-shrink: 0;
+  justify-content: center;
+  align-items: center;
+}
+.row-icon-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  margin-right: 18px;
+  flex-shrink: 0;
+}
+.icon-text {
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: bold;
+}
+.play-icon {
+  background-color: rgba(255,255,255,0.08);
+}
+.source-icon {
+  background-color: rgba(255,255,255,0.08);
+}
+.quality-icon {
+  background-color: rgba(251,114,153,0.15);
+}
+.bridge-icon {
+  background-color: rgba(255,255,255,0.08);
+}
+.splash-icon {
+  background-color: rgba(255,255,255,0.08);
+}
+.clear-icon {
+  background-color: rgba(255,255,255,0.08);
+}
+.logout-icon {
+  background-color: rgba(255,255,255,0.08);
+}
+.setting-title {
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: bold;
+  flex: 1;
+}
+.setting-value {
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: bold;
+}
+.setting-arrow {
+  color: rgba(255,255,255,0.5);
+  font-size: 30px;
+}
+.status {
+  width: 292px;
+  color: rgba(255,255,255,0.4);
+  font-size: 11px;
+  margin-top: 10px;
+  text-align: center;
+}
+</style>

@@ -1,0 +1,217 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back" onclick="back"><text class="back-text">‹</text></div>
+      <text class="title">评论区</text>
+    </div>
+
+    <list class="comment-list">
+      <list-item class="comment-item" type="comment" for="{{commentList}}">
+        <div class="comment-card">
+          <div class="card-header">
+            <image class="avatar" src="{{$item.avatar}}" />
+            <text class="user">{{$item.user}}</text>
+            <text class="like-count">♥ {{$item.like}}</text>
+          </div>
+          <text class="content">{{$item.text}}</text>
+          <text class="reply-info" if="{{$item.rcount > 0}}">{{$item.rcount}}条回复</text>
+        </div>
+      </list-item>
+    </list>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetch from '@system.fetch'
+
+export default {
+  private: {
+    bvid: '',
+    aid: '',
+    commentList: []
+  },
+  onInit() {
+    this.loadAid()
+  },
+  onShow() {
+  },
+  loadAid() {
+    var self = this
+    if (!this.bvid) {
+      return
+    }
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/view?bvid=' + this.bvid,
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.data && data.data.aid) {
+          self.aid = '' + data.data.aid
+          self.loadComments()
+        }
+      },
+      fail: function() {}
+    })
+  },
+  loadComments() {
+    var self = this
+    if (!this.aid) {
+      return
+    }
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/v2/reply?type=1&oid=' + this.aid + '&sort=1&ps=3&pn=1',
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        var replyList = []
+        if (data && data.data && data.data.replies) {
+          replyList = data.data.replies
+        } else if (data && data.replies) {
+          replyList = data.replies
+        }
+        var result = []
+        if (replyList && replyList.length > 0) {
+          var i = 0
+          for (i = 0; i < replyList.length && i < 3; i++) {
+            var item = replyList[i]
+            var member = item.member || {}
+            var content = item.content || {}
+            var uname = member.uname || '用户'
+            var avatar = member.avatar || ''
+            if (avatar.indexOf('//') === 0) {
+              avatar = 'https:' + avatar
+            }
+            if (avatar.indexOf('@') > 0) {
+              avatar = avatar.split('@')[0] + '@48w_48h_1e_1c.jpg'
+            }
+            var text = content.message || ''
+            if (text.length > 80) {
+              text = text.substring(0, 80) + '...'
+            }
+            result.push({
+              user: uname,
+              avatar: avatar || '/common/images/icon.png',
+              text: text,
+              like: self.formatCount(item.like || 0),
+              rcount: item.rcount || 0
+            })
+          }
+        }
+        self.commentList = result
+      },
+      fail: function() {}
+    })
+  },
+  formatCount(num) {
+    if (!num) return '0'
+    if (num > 10000) {
+      return (num / 10000).toFixed(1) + '万'
+    }
+    return '' + num
+  },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  height: 480px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_comment.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 4px 8px;
+}
+.header {
+  width: 318px;
+  height: 30px;
+  flex-direction: row;
+  align-items: center;
+}
+.back {
+  width: 30px;
+  height: 30px;
+  justify-content: center;
+  align-items: center;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 26px;
+}
+.title {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  margin-left: 6px;
+}
+.comment-list {
+  width: 320px;
+  height: 440px;
+  flex-direction: column;
+}
+.comment-item {
+  width: 320px;
+  height: 80px;
+  margin-top: 4px;
+}
+.comment-card {
+  width: 318px;
+  height: 76px;
+  border-radius: 12px;
+  background-color: rgba(255,255,255,0.1);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  flex-direction: column;
+  padding: 5px 10px;
+}
+.card-header {
+  flex-direction: row;
+  align-items: center;
+}
+.avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background-color: #1a1a1a;
+  object-fit: cover;
+}
+.user {
+  flex: 1;
+  color: #fb7299;
+  font-size: 11px;
+  font-weight: bold;
+  margin-left: 5px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.like-count {
+  color: rgba(255,255,255,0.4);
+  font-size: 10px;
+}
+.content {
+  color: #ffffff;
+  font-size: 12px;
+  margin-top: 3px;
+  width: 298px;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.reply-info {
+  color: rgba(255,255,255,0.35);
+  font-size: 9px;
+  margin-top: 1px;
+}
+</style>

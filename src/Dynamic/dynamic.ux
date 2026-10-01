@@ -1,0 +1,307 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back" onclick="back"><text class="back-text">‹</text></div>
+      <text class="title">动态</text>
+    </div>
+    <text class="status">{{status}}</text>
+
+    <div class="card" onclick="open1" if="{{d1Show}}">
+      <image class="dyn-img" if="{{d1HasPic}}" src="{{d1Pic}}" />
+      <div class="dyn-info">
+        <text class="name">{{d1Name}}</text>
+        <text class="content">{{d1Text}}</text>
+      </div>
+    </div>
+    <div class="card" onclick="open2" if="{{d2Show}}">
+      <image class="dyn-img" if="{{d2HasPic}}" src="{{d2Pic}}" />
+      <div class="dyn-info">
+        <text class="name">{{d2Name}}</text>
+        <text class="content">{{d2Text}}</text>
+      </div>
+    </div>
+    <div class="card" onclick="open3" if="{{d3Show}}">
+      <image class="dyn-img" if="{{d3HasPic}}" src="{{d3Pic}}" />
+      <div class="dyn-info">
+        <text class="name">{{d3Name}}</text>
+        <text class="content">{{d3Text}}</text>
+      </div>
+    </div>
+    <div class="card" onclick="open4" if="{{d4Show}}">
+      <image class="dyn-img" if="{{d4HasPic}}" src="{{d4Pic}}" />
+      <div class="dyn-info">
+        <text class="name">{{d4Name}}</text>
+        <text class="content">{{d4Text}}</text>
+      </div>
+    </div>
+    <div class="card" onclick="open5" if="{{d5Show}}">
+      <image class="dyn-img" if="{{d5HasPic}}" src="{{d5Pic}}" />
+      <div class="dyn-info">
+        <text class="name">{{d5Name}}</text>
+        <text class="content">{{d5Text}}</text>
+      </div>
+    </div>
+    <div class="card" onclick="open6" if="{{d6Show}}">
+      <image class="dyn-img" if="{{d6HasPic}}" src="{{d6Pic}}" />
+      <div class="dyn-info">
+        <text class="name">{{d6Name}}</text>
+        <text class="content">{{d6Text}}</text>
+      </div>
+    </div>
+
+    <div class="refresh" onclick="loadDynamic"><text class="refresh-text">刷新动态</text></div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetch from '@system.fetch'
+import storage from '@system.storage'
+
+export default {
+  private: {
+    status: '正在加载官方动态接口...',
+    items: [],
+    d1Show: false, d1Name: '', d1Text: '', d1Pic: '', d1HasPic: false,
+    d2Show: false, d2Name: '', d2Text: '', d2Pic: '', d2HasPic: false,
+    d3Show: false, d3Name: '', d3Text: '', d3Pic: '', d3HasPic: false,
+    d4Show: false, d4Name: '', d4Text: '', d4Pic: '', d4HasPic: false,
+    d5Show: false, d5Name: '', d5Text: '', d5Pic: '', d5HasPic: false,
+    d6Show: false, d6Name: '', d6Text: '', d6Pic: '', d6HasPic: false,
+  },
+  onInit() {
+    this.loadDynamic()
+  },
+  onShow() {
+  },
+
+  loadDynamic() {
+    var self = this
+    this.status = '正在加载官方动态接口...'
+    storage.get({
+      key: 'bili_cookie',
+      success: function(cookie) {
+        if (!cookie || cookie.length < 10) {
+          self.status = '未登录，无法读取动态'
+          return
+        }
+        fetch.fetch({
+          url: 'https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all?timezone_offset=-480&type=all&page=1',
+          header: {
+            'Cookie': cookie,
+            'User-Agent': 'Mozilla/5.0',
+            'Referer': 'https://t.bilibili.com/'
+          },
+          responseType: 'json',
+          success: function(res) {
+            var data = res.data
+            if (typeof data === 'string') {
+              data = JSON.parse(data)
+            }
+            if (data && data.data && data.data.items && data.data.items.length > 0) {
+              self.applyItems(data.data.items)
+            } else {
+              self.status = '动态接口无数据'
+            }
+          },
+          fail: function() {
+            self.status = '动态接口请求失败'
+          }
+        })
+      },
+      fail: function() {
+        self.status = '未登录，无法读取动态'
+      }
+    })
+  },
+  getText(item) {
+    var modules = item.modules || {}
+    var dynamic = modules.module_dynamic || {}
+    if (dynamic.major && dynamic.major.archive && dynamic.major.archive.title) {
+      return dynamic.major.archive.title
+    }
+    if (dynamic.desc && dynamic.desc.text) {
+      return dynamic.desc.text
+    }
+    if (dynamic.major && dynamic.major.draw && dynamic.major.draw.items && dynamic.major.draw.items.length > 0) {
+      return '发布了图片动态'
+    }
+    return '新的动态'
+  },
+  cleanImageUrl(url) {
+    if (!url) {
+      return ''
+    }
+    if (url.indexOf('//') === 0) {
+      url = 'https:' + url
+    }
+    if (url.indexOf('@') > 0) {
+      url = url.split('@')[0]
+    }
+    if (url.indexOf('hdslb.com') > 0 || url.indexOf('biliimg.com') > 0) {
+      url = url + '@96w_72h_1e_1c.jpg'
+    }
+    return url
+  },
+  getImage(item) {
+    var dynamic = item.modules && item.modules.module_dynamic ? item.modules.module_dynamic : {}
+    var major = dynamic.major || {}
+    if (major.draw && major.draw.items && major.draw.items.length > 0) {
+      return this.cleanImageUrl(major.draw.items[0].src || major.draw.items[0].url)
+    }
+    if (major.archive && major.archive.cover) {
+      return this.cleanImageUrl(major.archive.cover)
+    }
+    if (major.pgc && major.pgc.cover) {
+      return this.cleanImageUrl(major.pgc.cover)
+    }
+    if (major.article && major.article.covers && major.article.covers.length > 0) {
+      return this.cleanImageUrl(major.article.covers[0])
+    }
+    if (major.common && major.common.cover) {
+      return this.cleanImageUrl(major.common.cover)
+    }
+    if (major.live_rcmd && major.live_rcmd.content) {
+      try {
+        var live = JSON.parse(major.live_rcmd.content)
+        if (live && live.live_play_info && live.live_play_info.cover) {
+          return this.cleanImageUrl(live.live_play_info.cover)
+        }
+      } catch (e) {}
+    }
+    return ''
+  },
+  applyItems(list) {
+    var i = 0
+    this.items = list
+    for (i = 1; i <= 6; i++) {
+      this['d' + i + 'Show'] = false
+      this['d' + i + 'HasPic'] = false
+      this['d' + i + 'Pic'] = ''
+    }
+    for (i = 0; i < list.length && i < 6; i++) {
+      var item = list[i]
+      var author = item.modules && item.modules.module_author ? item.modules.module_author : {}
+      var n = i + 1
+      this['d' + n + 'Show'] = true
+      this['d' + n + 'Name'] = author.name || 'UP 主'
+      this['d' + n + 'Text'] = this.getText(item)
+      this['d' + n + 'Pic'] = this.getImage(item)
+      this['d' + n + 'HasPic'] = this['d' + n + 'Pic'].length > 0
+    }
+    this.status = '已加载 ' + (list.length > 6 ? 6 : list.length) + ' 条动态'
+  },
+  openItem(n) {
+    var item = this.items[n - 1]
+    if (!item) {
+      return
+    }
+    var dynamic = item.modules && item.modules.module_dynamic ? item.modules.module_dynamic : {}
+    if (dynamic.major && dynamic.major.archive && dynamic.major.archive.bvid) {
+      router.push({ uri: '/video', params: { bvid: dynamic.major.archive.bvid, title: dynamic.major.archive.title, pic: dynamic.major.archive.cover || '' } })
+    }
+  },
+  open1() { this.openItem(1) },
+  open2() { this.openItem(2) },
+  open3() { this.openItem(3) },
+  open4() { this.openItem(4) },
+  open5() { this.openItem(5) },
+  open6() { this.openItem(6) },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_blue.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 8px;
+
+}
+.header {
+  width: 318px;
+  height: 42px;
+  flex-direction: row;
+  align-items: center;
+}
+.back {
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+  align-items: center;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 34px;
+}
+.title {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.status {
+  width: 310px;
+  color: #fb7299;
+  font-size: 11px;
+  text-align: center;
+}
+.card {
+  width: 310px;
+  height: 58px;
+  margin-top: 8px;
+  border-radius: 14px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  flex-direction: row;
+  padding: 6px;
+  align-items: center;
+}
+.dyn-img {
+  width: 54px;
+  height: 42px;
+  border-radius: 10px;
+  object-fit: cover;
+  margin-right: 8px;
+}
+.dyn-info {
+  flex: 1;
+  flex-direction: column;
+}
+.name {
+  color: #fb7299;
+  font-size: 12px;
+  font-weight: bold;
+}
+.content {
+  color: #ffffff;
+  font-size: 12px;
+  margin-top: 4px;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.refresh {
+  width: 200px;
+  height: 34px;
+  margin-top: 10px;
+  border-radius: 17px;
+  background-color: #fb7299;
+  justify-content: center;
+  align-items: center;
+}
+.refresh-text {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+</style>

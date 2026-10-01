@@ -1,0 +1,394 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back" onclick="back"><text class="back-text">‹</text></div>
+      <text class="title">稍后再看</text>
+      <div class="clear-all" onclick="clearAll"><text class="clear-text">清空</text></div>
+    </div>
+
+    <text class="status">{{status}}</text>
+
+    <div class="list">
+      <div class="video-card" if="{{i1Show}}" onclick="play1">
+        <div class="del-btn" onclick="del1"><text class="del-text">×</text></div>
+        <div class="cover">
+          <image class="cover-img" src="{{i1Pic}}" />
+          <text class="cover-tag" if="{{i1Cached}}">已下载</text>
+        </div>
+        <text class="video-title">{{i1Title}}</text>
+        <text class="up-name">{{i1UpName}}</text>
+      </div>
+      <div class="video-card" if="{{i2Show}}" onclick="play2">
+        <div class="del-btn" onclick="del2"><text class="del-text">×</text></div>
+        <div class="cover">
+          <image class="cover-img" src="{{i2Pic}}" />
+          <text class="cover-tag" if="{{i2Cached}}">已下载</text>
+        </div>
+        <text class="video-title">{{i2Title}}</text>
+        <text class="up-name">{{i2UpName}}</text>
+      </div>
+      <div class="video-card" if="{{i3Show}}" onclick="play3">
+        <div class="del-btn" onclick="del3"><text class="del-text">×</text></div>
+        <div class="cover">
+          <image class="cover-img" src="{{i3Pic}}" />
+          <text class="cover-tag" if="{{i3Cached}}">已下载</text>
+        </div>
+        <text class="video-title">{{i3Title}}</text>
+        <text class="up-name">{{i3UpName}}</text>
+      </div>
+      <div class="video-card" if="{{i4Show}}" onclick="play4">
+        <div class="del-btn" onclick="del4"><text class="del-text">×</text></div>
+        <div class="cover">
+          <image class="cover-img" src="{{i4Pic}}" />
+          <text class="cover-tag" if="{{i4Cached}}">已下载</text>
+        </div>
+        <text class="video-title">{{i4Title}}</text>
+        <text class="up-name">{{i4UpName}}</text>
+      </div>
+      <div class="video-card" if="{{i5Show}}" onclick="play5">
+        <div class="del-btn" onclick="del5"><text class="del-text">×</text></div>
+        <div class="cover">
+          <image class="cover-img" src="{{i5Pic}}" />
+          <text class="cover-tag" if="{{i5Cached}}">已下载</text>
+        </div>
+        <text class="video-title">{{i5Title}}</text>
+        <text class="up-name">{{i5UpName}}</text>
+      </div>
+      <div class="video-card" if="{{i6Show}}" onclick="play6">
+        <div class="del-btn" onclick="del6"><text class="del-text">×</text></div>
+        <div class="cover">
+          <image class="cover-img" src="{{i6Pic}}" />
+          <text class="cover-tag" if="{{i6Cached}}">已下载</text>
+        </div>
+        <text class="video-title">{{i6Title}}</text>
+        <text class="up-name">{{i6UpName}}</text>
+      </div>
+      <div class="video-card" if="{{i7Show}}" onclick="play7">
+        <div class="del-btn" onclick="del7"><text class="del-text">×</text></div>
+        <div class="cover">
+          <image class="cover-img" src="{{i7Pic}}" />
+          <text class="cover-tag" if="{{i7Cached}}">已下载</text>
+        </div>
+        <text class="video-title">{{i7Title}}</text>
+        <text class="up-name">{{i7UpName}}</text>
+      </div>
+      <div class="video-card" if="{{i8Show}}" onclick="play8">
+        <div class="del-btn" onclick="del8"><text class="del-text">×</text></div>
+        <div class="cover">
+          <image class="cover-img" src="{{i8Pic}}" />
+          <text class="cover-tag" if="{{i8Cached}}">已下载</text>
+        </div>
+        <text class="video-title">{{i8Title}}</text>
+        <text class="up-name">{{i8UpName}}</text>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import storage from '@system.storage'
+
+export default {
+  private: {
+    status: '正在加载...',
+    list: [],
+    i1Show: false, i1Title: '', i1Pic: '', i1Bvid: '', i1UpName: '', i1UpFace: '', i1UpMid: '', i1Cached: false,
+    i2Show: false, i2Title: '', i2Pic: '', i2Bvid: '', i2UpName: '', i2UpFace: '', i2UpMid: '', i2Cached: false,
+    i3Show: false, i3Title: '', i3Pic: '', i3Bvid: '', i3UpName: '', i3UpFace: '', i3UpMid: '', i3Cached: false,
+    i4Show: false, i4Title: '', i4Pic: '', i4Bvid: '', i4UpName: '', i4UpFace: '', i4UpMid: '', i4Cached: false,
+    i5Show: false, i5Title: '', i5Pic: '', i5Bvid: '', i5UpName: '', i5UpFace: '', i5UpMid: '', i5Cached: false,
+    i6Show: false, i6Title: '', i6Pic: '', i6Bvid: '', i6UpName: '', i6UpFace: '', i6UpMid: '', i6Cached: false,
+    i7Show: false, i7Title: '', i7Pic: '', i7Bvid: '', i7UpName: '', i7UpFace: '', i7UpMid: '', i7Cached: false,
+    i8Show: false, i8Title: '', i8Pic: '', i8Bvid: '', i8UpName: '', i8UpFace: '', i8UpMid: '', i8Cached: false
+  },
+  onInit() {
+    this.loadList()
+  },
+  onShow() {
+    this.loadList()
+  },
+
+  loadList() {
+    var self = this
+    storage.get({
+      key: 'bili_watchlater',
+      success: function(data) {
+        var list = []
+        try {
+          list = JSON.parse(data || '[]')
+        } catch (e) {
+          list = []
+        }
+        if (!Array.isArray(list)) {
+          list = []
+        }
+        self.list = list
+        self.renderList()
+      },
+      fail: function() {
+        self.status = '暂无稍后再看视频'
+      }
+    })
+  },
+  renderList() {
+    var self = this
+    var i = 0
+    for (i = 1; i <= 8; i++) {
+      this['i' + i + 'Show'] = false
+      this['i' + i + 'Cached'] = false
+    }
+    var count = Math.min(this.list.length, 8)
+    if (count === 0) {
+      this.status = '暂无稍后再看视频'
+      return
+    }
+    this.status = '共 ' + this.list.length + ' 个视频'
+    for (i = 0; i < count; i++) {
+      var n = i + 1
+      var item = this.list[i]
+      this['i' + n + 'Show'] = true
+      this['i' + n + 'Title'] = item.title || 'B站视频'
+      this['i' + n + 'Bvid'] = item.bvid || ''
+      this['i' + n + 'UpName'] = item.upName || 'UP主'
+      this['i' + n + 'UpFace'] = item.upFace || '/common/images/icon.png'
+      this['i' + n + 'UpMid'] = item.upMid || ''
+      var pic = item.pic || '/common/images/icon.png'
+      if (pic.indexOf('//') === 0) {
+        pic = 'https:' + pic
+      }
+      if (pic.indexOf('hdslb.com') > 0 || pic.indexOf('biliimg.com') > 0) {
+        pic = pic + '@100w'
+      }
+      this['i' + n + 'Pic'] = pic
+    }
+    // 逐个检查离线缓存状态
+    for (i = 0; i < count; i++) {
+      self.checkOfflineCache(i + 1, self.list[i].bvid)
+    }
+  },
+  checkOfflineCache(slot, bvid) {
+    var self = this
+    if (!bvid) return
+    storage.get({
+      key: 'bili_offline_' + bvid,
+      success: function(data) {
+        if (data && data.length > 10) {
+          self['i' + slot + 'Cached'] = true
+        }
+      },
+      fail: function() {}
+    })
+  },
+  play(n) {
+    var item = this.list[n - 1]
+    if (!item || !item.bvid) {
+      return
+    }
+    var isCached = this['i' + n + 'Cached']
+    router.push({
+      uri: '/video',
+      params: {
+        title: item.title || 'B站视频',
+        bvid: item.bvid,
+        cid: '',
+        stat: '稍后再看',
+        pic: item.pic || '/common/images/icon.png',
+        offline: isCached ? 'true' : 'false'
+      }
+    })
+  },
+  play1() { this.play(1) },
+  play2() { this.play(2) },
+  play3() { this.play(3) },
+  play4() { this.play(4) },
+  play5() { this.play(5) },
+  play6() { this.play(6) },
+  play7() { this.play(7) },
+  play8() { this.play(8) },
+  deleteItem(n) {
+    if (n < 1 || n > this.list.length) {
+      return
+    }
+    var bvid = this.list[n - 1].bvid
+    var newList = []
+    var i = 0
+    for (i = 0; i < this.list.length; i++) {
+      if (i !== n - 1) {
+        newList.push(this.list[i])
+      }
+    }
+    this.list = newList
+    storage.set({
+      key: 'bili_watchlater',
+      value: JSON.stringify(newList)
+    })
+    // 同时删除离线缓存数据
+    if (bvid) {
+      storage.delete({ key: 'bili_offline_' + bvid })
+    }
+    this.renderList()
+  },
+  del1() { this.deleteItem(1) },
+  del2() { this.deleteItem(2) },
+  del3() { this.deleteItem(3) },
+  del4() { this.deleteItem(4) },
+  del5() { this.deleteItem(5) },
+  del6() { this.deleteItem(6) },
+  del7() { this.deleteItem(7) },
+  del8() { this.deleteItem(8) },
+  clearAll() {
+    var i = 0
+    // 删除所有离线缓存
+    for (i = 0; i < this.list.length; i++) {
+      if (this.list[i] && this.list[i].bvid) {
+        storage.delete({ key: 'bili_offline_' + this.list[i].bvid })
+      }
+    }
+    this.list = []
+    storage.set({
+      key: 'bili_watchlater',
+      value: '[]'
+    })
+    this.renderList()
+    this.status = '已清空稍后再看'
+  },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_watchlater.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 8px;
+
+}
+.header {
+  width: 320px;
+  height: 38px;
+  flex-direction: row;
+  align-items: center;
+}
+.back {
+  width: 34px;
+  height: 34px;
+  justify-content: center;
+  align-items: center;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 30px;
+}
+.title {
+  flex: 1;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: bold;
+  margin-left: 6px;
+}
+.clear-all {
+  width: 48px;
+  height: 28px;
+  justify-content: center;
+  align-items: center;
+}
+.clear-text {
+  color: #fb7299;
+  font-size: 12px;
+  font-weight: bold;
+}
+.status {
+  width: 320px;
+  color: rgba(255,255,255,0.55);
+  font-size: 11px;
+  margin-top: 4px;
+  text-align: center;
+}
+.list {
+  width: 320px;
+  margin-top: 4px;
+  flex-direction: column;
+  align-items: center;
+}
+.video-card {
+  width: 316px;
+  margin-top: 10px;
+  border-radius: 16px;
+  background-color: rgba(255,255,255,0.08);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  flex-direction: column;
+  padding: 8px;
+}
+.del-btn {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  background-color: rgba(0,0,0,0.5);
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+.del-text {
+  color: #fb7299;
+  font-size: 26px;
+  font-weight: bold;
+}
+.cover {
+  width: 300px;
+  height: 162px;
+  border-radius: 12px;
+  background-color: #fb7299;
+  justify-content: flex-end;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+.cover-img {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 300px;
+  height: 162px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+.cover-tag {
+  color: #ffffff;
+  font-size: 13px;
+  background-color: rgba(0,0,0,0.48);
+  border-radius: 8px;
+  padding: 2px 8px;
+}
+.video-title {
+  width: 296px;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 8px;
+  padding: 0 2px;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.up-name {
+  width: 296px;
+  color: rgba(255,255,255,0.5);
+  font-size: 13px;
+  margin-top: 4px;
+  padding: 0 2px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+
+</style>

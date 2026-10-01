@@ -1,0 +1,206 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <image class="back-icon" src="/common/images/icon_back.jpg" onclick="back" />
+      <text class="header-title">服务器地址</text>
+    </div>
+
+    <div class="input-card">
+      <text class="input-label">服务器 IP:端口</text>
+      <input class="input-field" type="text" value="{{serverAddr}}" placeholder="如 192.168.1.100:3000" onchange="onAddrChange" />
+    </div>
+
+    <div class="btn-row">
+      <div class="btn-save" onclick="saveAddr"><text class="btn-text">保存</text></div>
+      <div class="btn-test" onclick="testConn"><text class="btn-text">测试连接</text></div>
+    </div>
+
+    <text class="status-text" if="{{statusText}}">{{statusText}}</text>
+
+    <div class="hint-card">
+      <text class="hint-title">使用说明</text>
+      <text class="hint-line">1. 在服务器上运行视频帧解码服务</text>
+      <text class="hint-line">2. 填入服务器的 IP 地址和端口</text>
+      <text class="hint-line">3. 选择播放源为"服务器"</text>
+      <text class="hint-line">4. 打开视频即可由服务器解码发帧</text>
+      <text class="hint-line">5. 推荐 Oracle Cloud 免费实例</text>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import storage from '@system.storage'
+import fetch from '@system.fetch'
+
+export default {
+  private: {
+    serverAddr: '',
+    statusText: ''
+  },
+  onInit() {
+    var self = this
+    storage.get({
+      key: 'bili_server_addr',
+      success: function(data) {
+        self.serverAddr = data || ''
+      },
+      fail: function() {
+        self.serverAddr = ''
+      }
+    })
+  },
+  onAddrChange(e) {
+    this.serverAddr = e.value || ''
+  },
+  saveAddr() {
+    var addr = this.serverAddr.trim()
+    storage.set({ key: 'bili_server_addr', value: addr })
+    this.statusText = '已保存: ' + addr
+  },
+  testConn() {
+    var self = this
+    var addr = this.serverAddr.trim()
+    if (!addr) {
+      self.statusText = '请先填写地址'
+      return
+    }
+    storage.set({ key: 'bili_server_addr', value: addr })
+    self.statusText = '正在测试...'
+    fetch.fetch({
+      url: 'http://' + addr + '/api/health',
+      responseType: 'json',
+      timeout: 10000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data) } catch(e) {}
+        }
+        if (data && data.status === 'ok') {
+          self.statusText = '连接成功! 服务器: ' + (data.ip || addr)
+        } else {
+          self.statusText = '连接异常: ' + JSON.stringify(data)
+        }
+      },
+      fail: function() {
+        self.statusText = '连接失败，请检查地址和网络'
+      }
+    })
+  },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_blue.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 10px;
+}
+.header {
+  width: 316px;
+  height: 50px;
+  flex-direction: row;
+  align-items: center;
+}
+.back-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  margin-right: 10px;
+}
+.header-title {
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: bold;
+}
+.input-card {
+  width: 316px;
+  margin-top: 16px;
+  border-radius: 24px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  flex-direction: column;
+  padding: 16px;
+}
+.input-label {
+  color: rgba(255,255,255,0.7);
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+.input-field {
+  width: 280px;
+  height: 48px;
+  border-radius: 12px;
+  background-color: rgba(0,0,0,0.4);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.2);
+  color: #ffffff;
+  font-size: 18px;
+  padding: 0 12px;
+}
+.btn-row {
+  width: 316px;
+  flex-direction: row;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+.btn-save {
+  width: 150px;
+  height: 48px;
+  border-radius: 24px;
+  background-color: rgba(251,114,153,0.5);
+  justify-content: center;
+  align-items: center;
+}
+.btn-test {
+  width: 150px;
+  height: 48px;
+  border-radius: 24px;
+  background-color: rgba(255,255,255,0.15);
+  justify-content: center;
+  align-items: center;
+}
+.btn-text {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: bold;
+}
+.status-text {
+  width: 296px;
+  color: rgba(255,255,255,0.8);
+  font-size: 15px;
+  margin-top: 12px;
+  text-align: center;
+}
+.hint-card {
+  width: 316px;
+  margin-top: 20px;
+  border-radius: 20px;
+  background-color: rgba(255,255,255,0.06);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.08);
+  flex-direction: column;
+  padding: 16px;
+}
+.hint-title {
+  color: #fb7299;
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+.hint-line {
+  color: rgba(255,255,255,0.6);
+  font-size: 14px;
+  margin-top: 6px;
+}
+</style>

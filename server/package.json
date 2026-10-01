@@ -1,0 +1,11 @@
+{
+  "name": "wristbili-frame-server",
+  "version": "1.0.0",
+  "description": "WristBili 视频帧解码服务器 - 在 PC 上运行，为手环提供视频帧解码服务",
+  "main": "video-frame-server.js",
+  "scripts": {
+    "start": "node video-frame-server.js"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

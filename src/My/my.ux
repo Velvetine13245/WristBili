@@ -1,0 +1,892 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back" onclick="back"><text class="back-text">‹</text></div>
+      <text class="title">账号</text>
+    </div>
+
+    <div class="profile-card" if="{{showProfile}}">
+      <image class="avatar" src="{{avatar}}" />
+      <text class="name">{{uname}}</text>
+      <text class="sub">{{status}}</text>
+      <div class="stat-row">
+        <text class="stat-item">关注 {{following}}</text>
+        <text class="stat-item">粉丝 {{follower}}</text>
+      </div>
+    </div>
+
+    <div class="qr-card" if="{{showLogin}}">
+      <image class="qr-img" src="{{qrImg}}" />
+      <text class="qr-title">用 B站 客户端扫码</text>
+      <text class="qr-sub">{{loginStatus}}</text>
+    </div>
+
+    <div class="login-row" if="{{showLogin}}">
+      <div class="mini-btn" onclick="createQr"><text class="mini-text">刷新二维码</text></div>
+      <div class="mini-btn pink" onclick="checkLoginNow"><text class="mini-text white">检查登录</text></div>
+    </div>
+    <div class="login-wide" if="{{showLogin}}" onclick="switchQrSource">
+      <text class="mini-text">二维码不显示？切换二维码源</text>
+    </div>
+    <div class="login-wide" if="{{showLogin}}" onclick="useSavedCookie">
+      <text class="mini-text">已导入 Cookie？点这里登录</text>
+    </div>
+
+    <div class="info-card" if="{{showProfile}}">
+      <div class="row"><text class="label">UID</text><text class="value">{{mid}}</text></div>
+      <div class="row"><text class="label">硬币</text><text class="value">{{money}}</text></div>
+      <div class="row"><text class="label">等级</text><image class="level-img" src="{{levelImg}}" /></div>
+      <div class="row"><text class="label">推荐模式</text><text class="value">{{mode}}</text></div>
+    </div>
+
+    <div class="account-row" if="{{showProfile}}">
+      <div class="account-btn" onclick="goDynamic">
+        <image class="account-icon" src="/common/images/icon_dynamic.png" />
+        <text class="account-text">动态</text>
+      </div>
+      <div class="account-btn pink" onclick="goMessages">
+        <image class="account-icon" src="/common/images/icon_message.png" />
+        <text class="account-text white">私信</text>
+      </div>
+    </div>
+    <div class="account-row" if="{{showProfile}}">
+      <div class="account-btn" onclick="openFavorites">
+        <image class="account-icon" src="/common/images/icon_favorite.png" />
+        <text class="account-text">收藏</text>
+      </div>
+      <div class="account-btn" onclick="openHistory">
+        <image class="account-icon" src="/common/images/icon_history.png" />
+        <text class="account-text">观看历史</text>
+      </div>
+    </div>
+    <div class="account-row" if="{{showProfile}}">
+      <div class="account-btn" onclick="openWatchLater">
+        <image class="account-icon" src="/common/images/icon_watchlater.png" />
+        <text class="account-text">稍后再看</text>
+      </div>
+      <div class="account-btn" onclick="goManga">
+        <image class="account-icon" src="/common/images/icon_manga.png" />
+        <text class="account-text">漫画</text>
+      </div>
+    </div>
+    <div class="account-row" if="{{showProfile}}">
+      <div class="account-btn pink" onclick="goSettings">
+        <image class="account-icon" src="/common/images/icon_settings.png" />
+        <text class="account-text white">设置</text>
+      </div>
+      <div class="account-btn" onclick="back">
+        <text class="account-text">返回</text>
+      </div>
+    </div>
+
+    <div class="btn" onclick="loadProfile"><text class="btn-text">{{mainBtnText}}</text></div>
+    <text class="tip">{{tip}}</text>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetch from '@system.fetch'
+import storage from '@system.storage'
+
+export default {
+  private: {
+    avatar: '/common/images/icon.png',
+    uname: '未登录',
+    status: '等待读取账号数据',
+    loginStatus: '正在生成二维码...',
+    qrUrl: '',
+    qrImg: '/common/images/icon.png',
+    authCode: '',
+    qrSource: 0,
+    timer: null,
+    cookie: '',
+    showLogin: true,
+    showProfile: false,
+    mainBtnText: '刷新个人数据',
+    tip: 'TV端官方接口登录，Cookie直接从响应体获取。',
+    mid: '-',
+    money: '-',
+    level: '-',
+    levelImg: '/common/images/level_bili_0.png',
+    mode: '热门',
+    following: '-',
+    follower: '-',
+    appkey: '4409e2ce8ffd12b8',
+    appsec: '59b43e04ad6965f34319062b478f83dd'
+  },
+  onInit() {
+    var self = this
+    storage.get({
+      key: 'bili_avatar_cached',
+      success: function(pic) {
+        if (pic && pic.length > 10) {
+          self.avatar = pic
+        }
+      },
+      fail: function() {}
+    })
+    this.loadProfile()
+  },
+  onShow() {
+  },
+  md5(str) {
+    function safeAdd(x, y) {
+      var lsw = (x & 0xffff) + (y & 0xffff)
+      var msw = (x >> 16) + (y >> 16) + (lsw >> 16)
+      return (msw << 16) | (lsw & 0xffff)
+    }
+    function bitRol(num, cnt) {
+      return (num << cnt) | (num >>> (32 - cnt))
+    }
+    function cmn(q, a, b, x, s, t) {
+      return safeAdd(bitRol(safeAdd(safeAdd(a, q), safeAdd(x, t)), s), b)
+    }
+    function ff(a, b, c, d, x, s, t) { return cmn((b & c) | ((~b) & d), a, b, x, s, t) }
+    function gg(a, b, c, d, x, s, t) { return cmn((b & d) | (c & (~d)), a, b, x, s, t) }
+    function hh(a, b, c, d, x, s, t) { return cmn(b ^ c ^ d, a, b, x, s, t) }
+    function ii(a, b, c, d, x, s, t) { return cmn(c ^ (b | (~d)), a, b, x, s, t) }
+    function binlMD5(x, len) {
+      x[len >> 5] |= 0x80 << (len % 32)
+      x[(((len + 64) >>> 9) << 4) + 14] = len
+      var i, olda, oldb, oldc, oldd, a = 1732584193, b = -271733879, c = -1732584194, d = 271733878
+      for (i = 0; i < x.length; i += 16) {
+        olda = a; oldb = b; oldc = c; oldd = d
+        a = ff(a, b, c, d, x[i], 7, -680876936)
+        d = ff(d, a, b, c, x[i + 1], 12, -389564586)
+        c = ff(c, d, a, b, x[i + 2], 17, 606105819)
+        b = ff(b, c, d, a, x[i + 3], 22, -1044525330)
+        a = ff(a, b, c, d, x[i + 4], 7, -176418897)
+        d = ff(d, a, b, c, x[i + 5], 12, 1200080426)
+        c = ff(c, d, a, b, x[i + 6], 17, -1473231341)
+        b = ff(b, c, d, a, x[i + 7], 22, -45705983)
+        a = ff(a, b, c, d, x[i + 8], 7, 1770035416)
+        d = ff(d, a, b, c, x[i + 9], 12, -1958414417)
+        c = ff(c, d, a, b, x[i + 10], 17, -42063)
+        b = ff(b, c, d, a, x[i + 11], 22, -1990404162)
+        a = ff(a, b, c, d, x[i + 12], 7, 1804603682)
+        d = ff(d, a, b, c, x[i + 13], 12, -40341101)
+        c = ff(c, d, a, b, x[i + 14], 17, -1502002290)
+        b = ff(b, c, d, a, x[i + 15], 22, 1236535329)
+        a = gg(a, b, c, d, x[i + 1], 5, -165796510)
+        d = gg(d, a, b, c, x[i + 6], 9, -1069501632)
+        c = gg(c, d, a, b, x[i + 11], 14, 643717713)
+        b = gg(b, c, d, a, x[i], 20, -373897302)
+        a = gg(a, b, c, d, x[i + 5], 5, -701558691)
+        d = gg(d, a, b, c, x[i + 10], 9, 38016083)
+        c = gg(c, d, a, b, x[i + 15], 14, -660478335)
+        b = gg(b, c, d, a, x[i + 4], 20, -405537848)
+        a = gg(a, b, c, d, x[i + 9], 5, 568446438)
+        d = gg(d, a, b, c, x[i + 14], 9, -1019803690)
+        c = gg(c, d, a, b, x[i + 3], 14, -187363961)
+        b = gg(b, c, d, a, x[i + 8], 20, 1163531501)
+        a = gg(a, b, c, d, x[i + 13], 5, -1444681467)
+        d = gg(d, a, b, c, x[i + 2], 9, -51403784)
+        c = gg(c, d, a, b, x[i + 7], 14, 1735328473)
+        b = gg(b, c, d, a, x[i + 12], 20, -1926607734)
+        a = hh(a, b, c, d, x[i + 5], 4, -378558)
+        d = hh(d, a, b, c, x[i + 8], 11, -2022574463)
+        c = hh(c, d, a, b, x[i + 11], 16, 1839030562)
+        b = hh(b, c, d, a, x[i + 14], 23, -35309556)
+        a = hh(a, b, c, d, x[i + 1], 4, -1530992060)
+        d = hh(d, a, b, c, x[i + 4], 11, 1272893353)
+        c = hh(c, d, a, b, x[i + 7], 16, -155497632)
+        b = hh(b, c, d, a, x[i + 10], 23, -1094730640)
+        a = hh(a, b, c, d, x[i + 13], 4, 681279174)
+        d = hh(d, a, b, c, x[i], 11, -358537222)
+        c = hh(c, d, a, b, x[i + 3], 16, -722521979)
+        b = hh(b, c, d, a, x[i + 6], 23, 76029189)
+        a = hh(a, b, c, d, x[i + 9], 4, -640364487)
+        d = hh(d, a, b, c, x[i + 12], 11, -421815835)
+        c = hh(c, d, a, b, x[i + 15], 16, 530742520)
+        b = hh(b, c, d, a, x[i + 2], 23, -995338651)
+        a = ii(a, b, c, d, x[i], 6, -198630844)
+        d = ii(d, a, b, c, x[i + 7], 10, 1126891415)
+        c = ii(c, d, a, b, x[i + 14], 15, -1416354905)
+        b = ii(b, c, d, a, x[i + 5], 21, -57434055)
+        a = ii(a, b, c, d, x[i + 12], 6, 1700485571)
+        d = ii(d, a, b, c, x[i + 3], 10, -1894986606)
+        c = ii(c, d, a, b, x[i + 10], 15, -1051523)
+        b = ii(b, c, d, a, x[i + 1], 21, -2054922799)
+        a = ii(a, b, c, d, x[i + 8], 6, 1873313359)
+        d = ii(d, a, b, c, x[i + 15], 10, -30611744)
+        c = ii(c, d, a, b, x[i + 6], 15, -1560198380)
+        b = ii(b, c, d, a, x[i + 13], 21, 1309151649)
+        a = ii(a, b, c, d, x[i + 4], 6, -145523070)
+        d = ii(d, a, b, c, x[i + 11], 10, -1120210379)
+        c = ii(c, d, a, b, x[i + 2], 15, 718787259)
+        b = ii(b, c, d, a, x[i + 9], 21, -343485551)
+        a = safeAdd(a, olda); b = safeAdd(b, oldb); c = safeAdd(c, oldc); d = safeAdd(d, oldd)
+      }
+      return [a, b, c, d]
+    }
+    function binl2hex(binarray) {
+      var hexTab = '0123456789abcdef', str = '', i
+      for (i = 0; i < binarray.length * 4; i++) {
+        str += hexTab.charAt((binarray[i >> 2] >> ((i % 4) * 8 + 4)) & 0xf) + hexTab.charAt((binarray[i >> 2] >> ((i % 4) * 8)) & 0xf)
+      }
+      return str
+    }
+    function str2binl(str) {
+      var bin = [], mask = (1 << 8) - 1, i
+      for (i = 0; i < str.length * 8; i += 8) {
+        bin[i >> 5] |= (str.charCodeAt(i / 8) & mask) << (i % 32)
+      }
+      return bin
+    }
+    var s = str
+    var utf8 = ''
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i)
+      if (c < 128) {
+        utf8 += s.charAt(i)
+      } else if (c < 2048) {
+        utf8 += String.fromCharCode((c >> 6) | 192, (c & 63) | 128)
+      } else {
+        utf8 += String.fromCharCode((c >> 12) | 224, ((c >> 6) & 63) | 128, (c & 63) | 128)
+      }
+    }
+    return binl2hex(binlMD5(str2binl(utf8), utf8.length * 8))
+  },
+  signParams(params) {
+    return this.md5(params + this.appsec)
+  },
+  createQr() {
+    var self = this
+    this.loginStatus = '正在请求 TV端二维码...'
+    var ts = Math.floor(new Date().getTime() / 1000).toString()
+    var params = 'appkey=' + this.appkey + '&local_id=0&ts=' + ts
+    var sign = this.signParams(params)
+    var body = params + '&sign=' + sign
+    fetch.fetch({
+      url: 'https://passport.bilibili.com/x/passport-tv-login/qrcode/auth_code',
+      method: 'POST',
+      data: body,
+      responseType: 'json',
+      timeout: 15000,
+      header: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0'
+      },
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data)
+          } catch (e) {
+            self.loginStatus = '数据解析异常，重试中...'
+            setTimeout(function() { self.createQr() }, 2000)
+            return
+          }
+        }
+        if (data && data.code === 0 && data.data && data.data.url) {
+          self.qrUrl = data.data.url
+          self.authCode = data.data.auth_code
+          self.updateQrImage()
+          self.loginStatus = '请用 B站 客户端扫码'
+          self.startPoll()
+        } else {
+          self.loginStatus = '二维码接口错误: ' + (data ? data.code : 'null')
+          setTimeout(function() { self.createQr() }, 2000)
+        }
+      },
+      fail: function() {
+        self.loginStatus = '二维码生成失败，自动重试...'
+        setTimeout(function() { self.createQr() }, 2000)
+      }
+    })
+  },
+  updateQrImage() {
+    var encoded = encodeURIComponent(this.qrUrl)
+    if (this.qrSource === 0) {
+      this.qrImg = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encoded
+    } else if (this.qrSource === 1) {
+      this.qrImg = 'https://quickchart.io/qr?size=220&margin=1&text=' + encoded
+    } else {
+      this.qrImg = 'https://chart.googleapis.com/chart?cht=qr&chs=220x220&chl=' + encoded
+    }
+  },
+  switchQrSource() {
+    if (!this.qrUrl) {
+      this.createQr()
+      return
+    }
+    this.qrSource = this.qrSource + 1
+    if (this.qrSource > 2) {
+      this.qrSource = 0
+    }
+    this.updateQrImage()
+    this.loginStatus = '已切换二维码源 ' + (this.qrSource + 1)
+  },
+  startPoll() {
+    var self = this
+    if (this.timer) {
+      clearInterval(this.timer)
+    }
+    this.timer = setInterval(function() {
+      self.checkLoginNow()
+    }, 2000)
+  },
+  checkLoginNow() {
+    var self = this
+    if (!this.authCode) {
+      this.loginStatus = '请先刷新二维码'
+      return
+    }
+    var ts = Math.floor(new Date().getTime() / 1000).toString()
+    var params = 'appkey=' + this.appkey + '&auth_code=' + this.authCode + '&local_id=0&ts=' + ts
+    var sign = this.signParams(params)
+    var body = params + '&sign=' + sign
+    fetch.fetch({
+      url: 'https://passport.bilibili.com/x/passport-tv-login/qrcode/poll',
+      method: 'POST',
+      data: body,
+      responseType: 'json',
+      timeout: 10000,
+      header: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0'
+      },
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data)
+          } catch (e) {
+            self.loginStatus = '数据解析异常，等待重试...'
+            return
+          }
+        }
+        if (!data) {
+          self.loginStatus = '等待扫码...'
+          return
+        }
+        if (data.code === 0 && data.data) {
+          if (self.timer) {
+            clearInterval(self.timer)
+            self.timer = null
+          }
+          self.loginStatus = '登录成功，正在提取Cookie...'
+          var cookie = self.extractCookiesFromBody(data.data)
+          if (cookie) {
+            self.cookie = cookie
+            storage.set({ key: 'bili_cookie', value: cookie })
+            storage.set({ key: 'bili_login_ok', value: '1' })
+            if (data.data.access_token) {
+              storage.set({ key: 'bili_access_token', value: data.data.access_token })
+            }
+            if (data.data.refresh_token) {
+              storage.set({ key: 'bili_refresh_token', value: data.data.refresh_token })
+            }
+            if (data.data.mid) {
+              storage.set({ key: 'bili_mid', value: '' + data.data.mid })
+            }
+            self.loginStatus = '登录成功，加载个人数据...'
+            self.showLogin = false
+            self.showProfile = true
+            self.mainBtnText = '刷新个人数据'
+            self.fetchNav()
+          } else {
+            self.loginStatus = 'Cookie提取失败，请重新扫码'
+            self.authCode = ''
+            setTimeout(function() { self.createQr() }, 1500)
+          }
+        } else if (data.code === 86038) {
+          self.loginStatus = '二维码过期，自动刷新中...'
+          self.authCode = ''
+          self.createQr()
+        } else if (data.code === 86090) {
+          self.loginStatus = '已扫码，请在手机确认'
+        } else if (data.code === 86039) {
+          self.loginStatus = '等待扫码...'
+        } else {
+          self.loginStatus = '等待扫码...'
+        }
+      },
+      fail: function() {
+        self.loginStatus = '网络检查中...'
+      }
+    })
+  },
+  extractCookiesFromBody(dataObj) {
+    var parts = []
+    if (dataObj.cookie_info && dataObj.cookie_info.cookies) {
+      var cookies = dataObj.cookie_info.cookies
+      for (var i = 0; i < cookies.length; i++) {
+        var c = cookies[i]
+        if (c.name && c.value) {
+          parts.push(c.name + '=' + c.value)
+        }
+      }
+    }
+    if (parts.length > 0) {
+      return parts.join('; ')
+    }
+    return ''
+  },
+  useSavedCookie() {
+    var self = this
+    storage.get({
+      key: 'bili_cookie',
+      success: function(data) {
+        if (data && data.length > 10) {
+          if (self.timer) {
+            clearInterval(self.timer)
+            self.timer = null
+          }
+          self.cookie = data
+          self.showLogin = false
+          self.showProfile = true
+          self.mainBtnText = '刷新个人数据'
+          self.fetchNav()
+        } else {
+          self.loginStatus = '还没有导入 Cookie'
+          self.tip = '请使用B站客户端扫描二维码登录。'
+        }
+      },
+      fail: function() {
+        self.loginStatus = '还没有导入 Cookie'
+      }
+    })
+  },
+  loadProfile() {
+    var self = this
+    storage.get({
+      key: 'bili_cookie',
+      success: function(data) {
+        if (data && data.length > 10) {
+          self.cookie = data
+          self.mode = '个性化'
+          self.showLogin = false
+          self.showProfile = true
+          self.mainBtnText = '刷新个人数据'
+          self.fetchNav()
+        } else {
+          self.status = '未登录'
+          self.mode = '热门'
+          self.showLogin = true
+          self.showProfile = false
+          self.mainBtnText = '生成登录二维码'
+          self.createQr()
+        }
+      },
+      fail: function() {
+        self.status = '未登录'
+        self.mode = '热门'
+        self.showLogin = true
+        self.showProfile = false
+        self.mainBtnText = '生成登录二维码'
+        self.createQr()
+      }
+    })
+  },
+  fetchNav() {
+    var self = this
+    this.status = '正在请求个人数据(V2)...'
+    fetch.fetch({
+      url: 'https://app.bilibili.com/x/v2/account/myinfo',
+      header: {
+        'Cookie': this.cookie,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0',
+        'Referer': 'https://www.bilibili.com/'
+      },
+      responseType: 'json',
+      timeout: 15000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.code === 0 && data.data) {
+          var d = data.data
+          self.uname = d.name || 'B站用户'
+          self.mid = d.mid ? '' + d.mid : '-'
+          self.money = d.coins ? '' + d.coins : '0'
+          var currentLevel = d.level || 0
+          self.level = 'LV' + currentLevel
+          self.levelImg = self.buildLevelImg(currentLevel)
+          self.avatar = self.buildAvatarUrl(d.face || '/common/images/icon.png')
+          storage.set({ key: 'bili_avatar_cached', value: self.avatar })
+          storage.set({ key: 'bili_uname_cached', value: self.uname })
+          self.status = '已登录'
+          self.tip = 'TV端登录成功，Cookie已从响应体直接获取。'
+          self.fetchRelationStat()
+        } else {
+          self.fetchNavFallback()
+        }
+      },
+      fail: function() {
+        self.fetchNavFallback()
+      }
+    })
+  },
+  fetchNavFallback() {
+    var self = this
+    this.status = '正在请求个人数据(Web)...'
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/nav',
+      header: {
+        'Cookie': this.cookie,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0',
+        'Referer': 'https://www.bilibili.com/'
+      },
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.data && data.data.isLogin) {
+          self.uname = data.data.uname || 'B站用户'
+          self.mid = data.data.mid ? '' + data.data.mid : '-'
+          self.money = data.data.money ? '' + data.data.money : '0'
+          var currentLevel = data.data.level_info && data.data.level_info.current_level ? data.data.level_info.current_level : 0
+          self.level = 'LV' + currentLevel
+          self.levelImg = self.buildLevelImg(currentLevel)
+          self.avatar = self.buildAvatarUrl(data.data.face || '/common/images/icon.png')
+          storage.set({ key: 'bili_avatar_cached', value: self.avatar })
+          storage.set({ key: 'bili_uname_cached', value: self.uname })
+          self.status = '已登录'
+          self.tip = 'TV端登录成功，首页会优先尝试个性化推荐。'
+          self.fetchRelationStat()
+        } else {
+          self.status = '登录态不可用，请重新扫码'
+          self.uname = '未登录'
+          self.showLogin = true
+          self.showProfile = false
+          storage.set({ key: 'bili_login_ok', value: '0' })
+          storage.set({ key: 'bili_cookie', value: '' })
+          self.createQr()
+        }
+      },
+      fail: function() {
+        self.status = '个人数据接口请求失败'
+      }
+    })
+  },
+  cleanImageUrl(url) {
+    if (!url) {
+      return ''
+    }
+    if (url.indexOf('http') !== 0 && url.indexOf('//') === 0) {
+      url = 'https:' + url
+    }
+    if (url.indexOf('@') > 0) {
+      url = url.split('@')[0]
+    }
+    return url
+  },
+  buildAvatarUrl(url) {
+    var pic = this.cleanImageUrl(url)
+    if (!pic) {
+      return '/common/images/icon.png'
+    }
+    if (pic.indexOf('hdslb.com') > 0 || pic.indexOf('biliimg.com') > 0) {
+      pic = pic + '@56w_56h_1e_1c.jpg'
+    }
+    return pic
+  },
+  buildLevelImg(level) {
+    var lv = parseInt(level)
+    if (isNaN(lv) || lv < 0) {
+      lv = 0
+    }
+    if (lv > 6) {
+      lv = 6
+    }
+    return '/common/images/level_bili_' + lv + '.png'
+  },
+  formatNum(num) {
+    if (!num) {
+      return '0'
+    }
+    if (num > 10000) {
+      return (num / 10000).toFixed(1) + '万'
+    }
+    return '' + num
+  },
+  fetchRelationStat() {
+    var self = this
+    if (!this.mid || this.mid === '-') {
+      return
+    }
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/relation/stat?vmid=' + this.mid,
+      header: {
+        'Cookie': this.cookie,
+        'User-Agent': 'Mozilla/5.0'
+      },
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.data) {
+          self.following = self.formatNum(data.data.following || 0)
+          self.follower = self.formatNum(data.data.follower || 0)
+        }
+      },
+      fail: function() {}
+    })
+  },
+  openFavorites() {
+    router.push({ uri: '/favhistory', params: { tab: 'fav' } })
+  },
+  openHistory() {
+    router.push({ uri: '/favhistory', params: { tab: 'history' } })
+  },
+  openWatchLater() {
+    router.push({ uri: '/watchlater' })
+  },
+  goSettings() {
+    router.push({ uri: '/settings' })
+  },
+  back() {
+    router.back()
+  },
+  goDynamic() {
+    router.push({ uri: '/dynamic' })
+  },
+  goMessages() {
+    router.push({ uri: '/messages' })
+  },
+  goManga() {
+    router.push({ uri: '/manga' })
+  },
+
+  onDestroy() {
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = null
+    }
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_blue.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 8px;
+
+}
+.header {
+  width: 316px;
+  height: 50px;
+  flex-direction: row;
+  align-items: center;
+}
+.back {
+  width: 40px;
+  height: 40px;
+  justify-content: center;
+  align-items: center;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 38px;
+}
+.title {
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.profile-card {
+  width: 306px;
+  height: 168px;
+  margin-top: 8px;
+  border-radius: 24px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.qr-card {
+  width: 300px;
+  height: 300px;
+  margin-top: 8px;
+  border-radius: 24px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.qr-img {
+  width: 208px;
+  height: 208px;
+  border-radius: 10px;
+}
+.qr-title {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: bold;
+  margin-top: 8px;
+}
+.qr-sub {
+  color: rgba(255,255,255,0.58);
+  font-size: 13px;
+  margin-top: 5px;
+}
+.login-row {
+  width: 300px;
+  height: 42px;
+  margin-top: 8px;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.mini-btn {
+  width: 144px;
+  height: 40px;
+  border-radius: 20px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  justify-content: center;
+  align-items: center;
+}
+.login-wide {
+  width: 300px;
+  height: 38px;
+  margin-top: 6px;
+  border-radius: 19px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  justify-content: center;
+  align-items: center;
+}
+.mini-text {
+  color: #ffffff;
+  font-size: 15px;
+}
+.pink {
+  background-color: #fb7299;
+}
+.white {
+  color: #ffffff;
+}
+.avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 32px;
+  object-fit: cover;
+}
+.name {
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: bold;
+  margin-top: 6px;
+}
+.sub {
+  color: rgba(255,255,255,0.55);
+  font-size: 14px;
+  margin-top: 5px;
+}
+.stat-row {
+  width: 220px;
+  height: 28px;
+  margin-top: 5px;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.stat-item {
+  color: #fb7299;
+  font-size: 15px;
+  font-weight: bold;
+}
+.info-card {
+  width: 306px;
+  height: 148px;
+  margin-top: 8px;
+  border-radius: 20px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  flex-direction: column;
+  padding: 12px;
+}
+.account-row {
+  width: 316px;
+  height: 56px;
+  margin-top: 6px;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.account-btn {
+  width: 152px;
+  height: 52px;
+  border-radius: 26px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+.account-icon {
+  width: 22px;
+  height: 22px;
+  margin-right: 6px;
+}
+.account-text {
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: bold;
+}
+.row {
+  width: 286px;
+  height: 36px;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+.label {
+  color: rgba(255,255,255,0.72);
+  font-size: 17px;
+}
+.value {
+  color: #fb7299;
+  font-size: 17px;
+  font-weight: bold;
+}
+.level-img {
+  width: 92px;
+  height: 36px;
+  object-fit: contain;
+}
+.btn {
+  width: 220px;
+  height: 44px;
+  margin-top: 8px;
+  border-radius: 22px;
+  background-color: rgba(251,114,153,0.5);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  justify-content: center;
+  align-items: center;
+}
+.btn-text {
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: bold;
+}
+.tip {
+  width: 300px;
+  color: rgba(255,255,255,0.42);
+  font-size: 12px;
+  text-align: center;
+  margin-top: 8px;
+}
+</style>

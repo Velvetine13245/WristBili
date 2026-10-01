@@ -1,0 +1,218 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back" onclick="back">
+        <text class="back-text">‹</text>
+      </div>
+      <text class="title">更换开屏</text>
+    </div>
+
+    <text class="sub-title">点击选择开屏图片</text>
+
+    <div class="list">
+      <div class="splash-item" onclick="select1">
+        <image class="splash-thumb" src="/common/images/splash/splash_01.png" />
+        <text class="splash-name {{s1Class}}">{{s1Name}}</text>
+      </div>
+      <div class="splash-item" onclick="select2">
+        <image class="splash-thumb" src="/common/images/splash/splash_02.png" />
+        <text class="splash-name {{s2Class}}">{{s2Name}}</text>
+      </div>
+      <div class="splash-item" onclick="select3">
+        <image class="splash-thumb" src="/common/images/splash/splash_03.png" />
+        <text class="splash-name {{s3Class}}">{{s3Name}}</text>
+      </div>
+      <div class="splash-item" onclick="select4">
+        <image class="splash-thumb" src="/common/images/splash/splash_04.png" />
+        <text class="splash-name {{s4Class}}">{{s4Name}}</text>
+      </div>
+      <div class="splash-item" onclick="select5">
+        <image class="splash-thumb" src="/common/images/splash/splash_05.png" />
+        <text class="splash-name {{s5Class}}">{{s5Name}}</text>
+      </div>
+      <div class="splash-item" onclick="select6">
+        <image class="splash-thumb" src="/common/images/splash/splash_06.png" />
+        <text class="splash-name {{s6Class}}">{{s6Name}}</text>
+      </div>
+      <div class="splash-item" onclick="select7">
+        <image class="splash-thumb" src="/common/images/splash/splash_07.png" />
+        <text class="splash-name {{s7Class}}">{{s7Name}}</text>
+      </div>
+      <div class="splash-item" onclick="select8">
+        <image class="splash-thumb" src="/common/images/splash/splash_08.png" />
+        <text class="splash-name {{s8Class}}">{{s8Name}}</text>
+      </div>
+      <div class="splash-item" onclick="select9">
+        <image class="splash-thumb" src="/common/images/splash/splash_09.png" />
+        <text class="splash-name {{s9Class}}">{{s9Name}}</text>
+      </div>
+      <div class="splash-item" onclick="select10">
+        <image class="splash-thumb" src="/common/images/splash/splash_10.png" />
+        <text class="splash-name {{s10Class}}">{{s10Name}}</text>
+      </div>
+    </div>
+
+    <text class="status">{{status}}</text>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import storage from '@system.storage'
+
+export default {
+  private: {
+    status: '选择喜欢的开屏图',
+    selectedIndex: 1,
+    s1Name: '22/33 十周年',
+    s2Name: 'BML 2021',
+    s3Name: 'BW 粉色',
+    s4Name: 'BW 2020',
+    s5Name: '22/33 小电视',
+    s6Name: '22/33 白色',
+    s7Name: '圣诞快乐',
+    s8Name: '13周年庆',
+    s9Name: '12周年庆',
+    s10Name: '11周年庆',
+    s1Class: 'name-normal',
+    s2Class: 'name-normal',
+    s3Class: 'name-normal',
+    s4Class: 'name-normal',
+    s5Class: 'name-normal',
+    s6Class: 'name-normal',
+    s7Class: 'name-normal',
+    s8Class: 'name-normal',
+    s9Class: 'name-normal',
+    s10Class: 'name-normal'
+  },
+  onInit() {
+    var self = this
+    storage.get({
+      key: 'bili_splash_index',
+      success: function(data) {
+        var idx = parseInt(data) || 1
+        if (idx < 1 || idx > 10) {
+          idx = 1
+        }
+        self.selectedIndex = idx
+        self.updateSelection()
+      },
+      fail: function() {
+        self.selectedIndex = 1
+        self.updateSelection()
+      }
+    })
+  },
+  onShow() {
+  },
+  updateSelection() {
+    var i = 0
+    for (i = 1; i <= 10; i++) {
+      this['s' + i + 'Class'] = (i === this.selectedIndex) ? 'name-active' : 'name-normal'
+      this['s' + i + 'Name'] = (i === this.selectedIndex) ? ('已选 ' + this['s' + i + 'Name']) : this['s' + i + 'Name'].replace('已选 ', '')
+    }
+  },
+  select(index) {
+    this.selectedIndex = index
+    storage.set({ key: 'bili_splash_index', value: '' + index })
+    this.updateSelection()
+    this.status = '已选择：第' + index + '张开屏图'
+  },
+  select1() { this.select(1) },
+  select2() { this.select(2) },
+  select3() { this.select(3) },
+  select4() { this.select(4) },
+  select5() { this.select(5) },
+  select6() { this.select(6) },
+  select7() { this.select(7) },
+  select8() { this.select(8) },
+  select9() { this.select(9) },
+  select10() { this.select(10) },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  height: 480px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #fff3f8;
+  background-image: linear-gradient(to bottom, #ffffff, #ffe3ef);
+  padding: 8px;
+
+}
+.header {
+  width: 316px;
+  height: 38px;
+  flex-direction: row;
+  align-items: center;
+}
+.back {
+  width: 32px;
+  height: 32px;
+  justify-content: center;
+  align-items: center;
+}
+.back-text {
+  color: #3a1728;
+  font-size: 30px;
+}
+.title {
+  color: #3a1728;
+  font-size: 18px;
+  font-weight: bold;
+  margin-left: 6px;
+}
+.sub-title {
+  color: rgba(58,23,40,0.5);
+  font-size: 12px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+.list {
+  width: 316px;
+  flex-direction: column;
+  align-items: center;
+}
+.splash-item {
+  width: 300px;
+  height: 70px;
+  margin-top: 4px;
+  border-radius: 12px;
+  background-color: rgba(255,255,255,0.85);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  flex-direction: row;
+  align-items: center;
+  padding: 4px 8px;
+}
+.splash-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.splash-name {
+  flex: 1;
+  margin-left: 10px;
+  font-size: 14px;
+  font-weight: bold;
+}
+.name-normal {
+  color: #3a1728;
+}
+.name-active {
+  color: #fb7299;
+}
+.status {
+  width: 292px;
+  color: #fb7299;
+  font-size: 11px;
+  margin-top: 6px;
+  text-align: center;
+}
+</style>

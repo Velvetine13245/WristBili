@@ -1,0 +1,634 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <image class="back-icon" src="/common/images/icon_back.jpg" onclick="back" />
+      <text class="header-title">下载进度</text>
+    </div>
+
+    <div class="video-card">
+      <image class="video-cover" src="{{displayPic}}" />
+      <div class="video-info">
+        <text class="video-title">{{title}}</text>
+        <text class="video-up">{{upName}}</text>
+      </div>
+    </div>
+
+    <div class="progress-section">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" style="width: {{progressWidth}}px;"></div>
+      </div>
+      <text class="progress-percent">{{progressPercent}}%</text>
+    </div>
+
+    <text class="status-text">{{statusText}}</text>
+
+    <div class="step-list">
+      <div class="step-row">
+        <text class="step-dot {{step1Done ? 'dot-done' : (step1Active ? 'dot-active' : 'dot-pending')}}">{{step1Done ? '✓' : '1'}}</text>
+        <text class="step-label {{step1Done ? 'label-done' : (step1Active ? 'label-active' : 'label-pending')}}">添加到稍后再看</text>
+      </div>
+      <div class="step-row">
+        <text class="step-dot {{step2Done ? 'dot-done' : (step2Active ? 'dot-active' : 'dot-pending')}}">{{step2Done ? '✓' : '2'}}</text>
+        <text class="step-label {{step2Done ? 'label-done' : (step2Active ? 'label-active' : 'label-pending')}}">获取视频信息</text>
+      </div>
+      <div class="step-row">
+        <text class="step-dot {{step3Done ? 'dot-done' : (step3Active ? 'dot-active' : 'dot-pending')}}">{{step3Done ? '✓' : '3'}}</text>
+        <text class="step-label {{step3Done ? 'label-done' : (step3Active ? 'label-active' : 'label-pending')}}">获取视频帧数据</text>
+      </div>
+      <div class="step-row">
+        <text class="step-dot {{step4Done ? 'dot-done' : (step4Active ? 'dot-active' : 'dot-pending')}}">{{step4Done ? '✓' : '4'}}</text>
+        <text class="step-label {{step4Done ? 'label-done' : (step4Active ? 'label-active' : 'label-pending')}}">构建视频帧</text>
+      </div>
+      <div class="step-row">
+        <text class="step-dot {{step5Done ? 'dot-done' : (step5Active ? 'dot-active' : 'dot-pending')}}">{{step5Done ? '✓' : '5'}}</text>
+        <text class="step-label {{step5Done ? 'label-done' : (step5Active ? 'label-active' : 'label-pending')}}">保存到本地</text>
+      </div>
+    </div>
+
+    <div class="complete-section" if="{{isComplete}}">
+      <text class="complete-detail">已下载 {{frameCount}} 帧 · 可离线观看</text>
+      <div class="complete-btn" onclick="back">
+        <text class="complete-btn-text">返回视频</text>
+      </div>
+    </div>
+
+    <div class="error-section" if="{{hasError}}">
+      <text class="error-text">{{errorText}}</text>
+      <div class="retry-btn" onclick="retry">
+        <text class="retry-btn-text">重试</text>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetch from '@system.fetch'
+import storage from '@system.storage'
+import vibrator from '@system.vibrator'
+
+export default {
+  private: {
+    bvid: '',
+    cid: '',
+    title: 'B站视频',
+    pic: '/common/images/icon.png',
+    displayPic: '/common/images/icon.png',
+    upName: 'UP主',
+    upFace: '/common/images/icon.png',
+    upMid: '',
+    stat: '',
+    aid: '',
+    transcodeQuality: 'standard',
+    progressWidth: 0,
+    progressPercent: 0,
+    statusText: '准备下载...',
+    isComplete: false,
+    hasError: false,
+    errorText: '',
+    frameCount: 0,
+    step1Done: false,
+    step1Active: true,
+    step2Done: false,
+    step2Active: false,
+    step3Done: false,
+    step3Active: false,
+    step4Done: false,
+    step4Active: false,
+    step5Done: false,
+    step5Active: false,
+    spriteUrls: [],
+    imgXLen: 10,
+    imgYLen: 10,
+    imgXSize: 160,
+    imgYSize: 90,
+    indexList: [],
+    frameList: []
+  },
+  onInit() {
+    this.displayPic = this.cleanImageUrl(this.pic) || '/common/images/icon.png'
+    this.startDownload()
+  },
+  cleanImageUrl(url) {
+    if (!url) return ''
+    if (url.indexOf('http') !== 0 && url.indexOf('//') === 0) {
+      url = 'https:' + url
+    }
+    if (url.indexOf('@') > 0) {
+      url = url.split('@')[0]
+    }
+    return url
+  },
+  startDownload() {
+    var self = this
+    self.step1Done = true
+    self.step1Active = false
+    self.step2Active = true
+    self.statusText = '正在获取视频信息...'
+    self.progressPercent = 10
+    self.progressWidth = 31
+
+    storage.get({
+      key: 'bili_transcode_quality',
+      success: function(data) {
+        if (data === '120p' || data === '480p' || data === '1080p') {
+          self.transcodeQuality = data
+        }
+        self.proceedWithCid()
+      },
+      fail: function() {
+        self.proceedWithCid()
+      }
+    })
+  },
+  proceedWithCid() {
+    var self = this
+    if (this.cid) {
+      self.step2Done = true
+      self.step2Active = false
+      if (!self.aid) {
+        self.fetchAid()
+      }
+      self.fetchVideoshot()
+      return
+    }
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/view?bvid=' + this.bvid,
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') data = JSON.parse(data)
+        if (data && data.data) {
+          self.cid = data.data.cid ? '' + data.data.cid : ''
+          self.aid = data.data.aid ? '' + data.data.aid : ''
+          if (data.data.pic) {
+            self.pic = data.data.pic
+            self.displayPic = self.cleanImageUrl(self.pic)
+          }
+          if (!self.title || self.title === 'B站视频') {
+            self.title = data.data.title || self.title
+          }
+          if (data.data.owner) {
+            self.upName = data.data.owner.name || self.upName
+            self.upMid = data.data.owner.mid ? '' + data.data.owner.mid : ''
+            var face = data.data.owner.face || ''
+            if (face) {
+              if (face.indexOf('//') === 0) face = 'https:' + face
+              if (face.indexOf('@') > 0) face = face.split('@')[0]
+              self.upFace = face
+            }
+          }
+          if (self.cid) {
+            self.step2Done = true
+            self.step2Active = false
+            self.fetchVideoshot()
+          } else {
+            self.showError('获取视频 CID 失败')
+          }
+        } else {
+          self.showError('获取视频信息失败')
+        }
+      },
+      fail: function() {
+        self.showError('网络请求失败，请检查网络连接')
+      }
+    })
+  },
+  fetchAid() {
+    var self = this
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/view?bvid=' + this.bvid,
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') data = JSON.parse(data)
+        if (data && data.data) {
+          if (data.data.aid) {
+            self.aid = '' + data.data.aid
+          }
+          // 同时补充UP主信息
+          if (data.data.owner) {
+            self.upName = data.data.owner.name || self.upName
+            self.upMid = data.data.owner.mid ? '' + data.data.owner.mid : self.upMid
+            var face = data.data.owner.face || ''
+            if (face) {
+              if (face.indexOf('//') === 0) face = 'https:' + face
+              if (face.indexOf('@') > 0) face = face.split('@')[0]
+              self.upFace = face
+            }
+          }
+          if (data.data.pic && self.pic === '/common/images/icon.png') {
+            self.pic = data.data.pic
+            self.displayPic = self.cleanImageUrl(self.pic)
+          }
+        }
+      },
+      fail: function() {}
+    })
+  },
+  fetchVideoshot() {
+    var self = this
+    this.step3Active = true
+    this.statusText = '正在获取视频帧数据...'
+    this.progressPercent = 30
+    this.progressWidth = 94
+
+    if (!this.cid) {
+      self.showError('缺少 CID，无法获取视频帧')
+      return
+    }
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/player/videoshot?bvid=' + this.bvid + '&cid=' + this.cid + '&index=1',
+      responseType: 'json',
+      timeout: 15000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') data = JSON.parse(data)
+        if (data && data.code === 0 && data.data) {
+          var d = data.data
+          self.imgXLen = d.img_x_len || 10
+          self.imgYLen = d.img_y_len || 10
+          self.imgXSize = d.img_x_size || 160
+          self.imgYSize = d.img_y_size || 90
+          var urls = []
+          if (d.image && d.image.length > 0) {
+            var i = 0
+            for (i = 0; i < d.image.length; i++) {
+              var url = d.image[i]
+              if (url.indexOf('//') === 0) url = 'https:' + url
+              if (url.indexOf('http') === 0) urls.push(url)
+            }
+          }
+          self.indexList = d.index || []
+          if (urls.length > 0) {
+            self.spriteUrls = urls
+            self.step3Done = true
+            self.step3Active = false
+            self.buildFrames()
+          } else {
+            self.showError('视频帧数据为空')
+          }
+        } else {
+          self.showError('视频帧获取失败')
+        }
+      },
+      fail: function() {
+        self.showError('视频帧请求失败，请检查网络')
+      }
+    })
+  },
+  buildFrames() {
+    var self = this
+    this.step4Active = true
+    this.statusText = '正在构建视频帧...'
+    this.progressPercent = 60
+    this.progressWidth = 187
+
+    setTimeout(function() {
+      self._doBuildFrames()
+    }, 300)
+  },
+  _doBuildFrames() {
+    var self = this
+    var frameList = []
+    var i = 0
+    var framesPerSprite = this.imgXLen * this.imgYLen
+    var totalCapacity = framesPerSprite * this.spriteUrls.length
+    // index 数组第0个元素是占位符(值为0)，实际有效帧数 = indexList.length - 1
+    // 使用精确帧数，不额外减安全余量，确保完整截取所有帧且无黑帧
+    var frameCount = 0
+    if (this.indexList.length > 1) {
+      frameCount = this.indexList.length - 1
+    } else if (totalCapacity > 0) {
+      // 无 index 数据的回退：保守估算，仅取最后一张图的第一行作为最小估计
+      // 避免读取最后一张雪碧图的空白格(黑帧)
+      var lastSheetMin = this.imgXLen
+      frameCount = (this.spriteUrls.length - 1) * framesPerSprite + lastSheetMin
+      if (frameCount > totalCapacity) frameCount = totalCapacity
+    }
+    if (frameCount < 1) frameCount = 0
+    // 裁剪参数：始终使用原始格子尺寸 160×90，不偏移不缩放
+    // 避免中心裁剪导致的"放大"效果
+    var cropW = this.imgXSize
+    var cropH = this.imgYSize
+    var qualitySuffix = 'a.jpg'
+    for (i = 0; i < frameCount; i++) {
+      var posInSheet = i % framesPerSprite
+      var col = posInSheet % this.imgXLen
+      var row = Math.floor(posInSheet / this.imgXLen)
+      var x = col * this.imgXSize
+      var y = row * this.imgYSize
+      var spriteIdx = Math.floor(i / framesPerSprite)
+      if (spriteIdx >= this.spriteUrls.length) {
+        break
+      }
+      var baseUrl = this.spriteUrls[spriteIdx]
+      if (baseUrl.indexOf('@') > 0) {
+        baseUrl = baseUrl.split('@')[0]
+      }
+      frameList.push(baseUrl + '@' + x + '-' + y + '-' + cropW + '-' + cropH + qualitySuffix)
+    }
+
+    if (frameList.length === 0) {
+      self.showError('无可用视频帧')
+      return
+    }
+
+    self.frameList = frameList
+    self.step4Done = true
+    self.step4Active = false
+    self.saveOfflineData()
+  },
+  saveOfflineData() {
+    var self = this
+    this.step5Active = true
+    this.statusText = '正在保存到本地...'
+    this.progressPercent = 85
+    this.progressWidth = 265
+
+    var offlineData = {
+      bvid: this.bvid,
+      cid: this.cid,
+      aid: this.aid,
+      title: this.title,
+      pic: this.pic,
+      upName: this.upName,
+      upFace: this.upFace,
+      upMid: this.upMid,
+      stat: this.stat,
+      frameList: this.frameList,
+      spriteUrls: this.spriteUrls,
+      imgXLen: this.imgXLen,
+      imgYLen: this.imgYLen,
+      imgXSize: this.imgXSize,
+      imgYSize: this.imgYSize,
+      indexList: this.indexList,
+      transcodeQuality: this.transcodeQuality,
+      timestamp: Date.now()
+    }
+    storage.set({
+      key: 'bili_offline_' + this.bvid,
+      value: JSON.stringify(offlineData),
+      success: function() {
+        self.step5Done = true
+        self.step5Active = false
+        self.frameCount = self.frameList.length
+        self.progressPercent = 100
+        self.progressWidth = 312
+        self.statusText = '下载完成'
+        self.isComplete = true
+        self.doVibrate()
+      },
+      fail: function() {
+        self.showError('下载写入失败（存储空间可能不足）')
+      }
+    })
+  },
+  doVibrate() {
+    try {
+      vibrator.vibrate({ mode: 'long' })
+    } catch (e) {
+      try {
+        vibrator.vibrate()
+      } catch (e2) {}
+    }
+    setTimeout(function() {
+      try {
+        vibrator.vibrate({ mode: 'short' })
+      } catch (e) {
+        try {
+          vibrator.vibrate()
+        } catch (e2) {}
+      }
+    }, 500)
+  },
+  showError(msg) {
+    this.hasError = true
+    this.errorText = msg
+    this.statusText = '下载失败'
+  },
+  retry() {
+    this.hasError = false
+    this.errorText = ''
+    this.statusText = '正在重试...'
+    this.progressPercent = 0
+    this.progressWidth = 0
+    this.step1Done = true
+    this.step1Active = false
+    this.step2Done = false
+    this.step2Active = true
+    this.step3Done = false
+    this.step3Active = false
+    this.step4Done = false
+    this.step4Active = false
+    this.step5Done = false
+    this.step5Active = false
+    this.frameList = []
+    this.spriteUrls = []
+    this.indexList = []
+    this.proceedWithCid()
+  },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_pink.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 4px 12px;
+}
+.header {
+  width: 312px;
+  height: 38px;
+  flex-direction: row;
+  align-items: center;
+}
+.back-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+}
+.header-title {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.video-card {
+  width: 312px;
+  height: 56px;
+  flex-direction: row;
+  align-items: center;
+  margin-top: 6px;
+  border-radius: 12px;
+  background-color: rgba(0,0,0,0.5);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  padding: 4px;
+}
+.video-cover {
+  width: 80px;
+  height: 48px;
+  border-radius: 8px;
+  background-color: #1a1a1a;
+  object-fit: cover;
+}
+.video-info {
+  flex: 1;
+  flex-direction: column;
+  margin-left: 8px;
+  justify-content: center;
+}
+.video-title {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.video-up {
+  color: rgba(255,255,255,0.5);
+  font-size: 10px;
+  margin-top: 2px;
+}
+.progress-section {
+  width: 312px;
+  flex-direction: row;
+  align-items: center;
+  margin-top: 12px;
+}
+.progress-bar-bg {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background-color: rgba(255,255,255,0.15);
+}
+.progress-bar-fill {
+  height: 8px;
+  border-radius: 4px;
+  background-color: #fb7299;
+}
+.progress-percent {
+  color: #fb7299;
+  font-size: 13px;
+  font-weight: bold;
+  margin-left: 8px;
+  width: 40px;
+  text-align: right;
+}
+.status-text {
+  width: 312px;
+  color: rgba(255,255,255,0.7);
+  font-size: 12px;
+  margin-top: 6px;
+  text-align: center;
+}
+.step-list {
+  width: 312px;
+  margin-top: 10px;
+  flex-direction: column;
+}
+.step-row {
+  width: 312px;
+  height: 26px;
+  flex-direction: row;
+  align-items: center;
+}
+.step-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 18px;
+  color: #ffffff;
+}
+.dot-done {
+  background-color: #00c853;
+}
+.dot-active {
+  background-color: #fb7299;
+}
+.dot-pending {
+  background-color: rgba(255,255,255,0.2);
+}
+.step-label {
+  font-size: 12px;
+  margin-left: 8px;
+}
+.label-done {
+  color: #00c853;
+}
+.label-active {
+  color: #fb7299;
+  font-weight: bold;
+}
+.label-pending {
+  color: rgba(255,255,255,0.35);
+}
+.complete-section {
+  width: 312px;
+  margin-top: 10px;
+  flex-direction: column;
+  align-items: center;
+}
+.complete-detail {
+  color: #00c853;
+  font-size: 12px;
+  font-weight: bold;
+  text-align: center;
+}
+.complete-btn {
+  width: 160px;
+  height: 40px;
+  margin-top: 8px;
+  border-radius: 20px;
+  background-color: rgba(251,114,153,0.3);
+  border-width: 1px;
+  border-color: #fb7299;
+  justify-content: center;
+  align-items: center;
+}
+.complete-btn-text {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+}
+.error-section {
+  width: 312px;
+  margin-top: 10px;
+  flex-direction: column;
+  align-items: center;
+}
+.error-text {
+  color: #ff5252;
+  font-size: 12px;
+  text-align: center;
+}
+.retry-btn {
+  width: 120px;
+  height: 36px;
+  margin-top: 8px;
+  border-radius: 18px;
+  background-color: rgba(255,82,82,0.2);
+  border-width: 1px;
+  border-color: #ff5252;
+  justify-content: center;
+  align-items: center;
+}
+.retry-btn-text {
+  color: #ff5252;
+  font-size: 13px;
+  font-weight: bold;
+}
+</style>

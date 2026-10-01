@@ -1,0 +1,1365 @@
+<template>
+  <div class="page">
+    <div class="player-area">
+      <image class="player-img" src="{{currentFrame}}" />
+      <div class="danmaku-layer" if="{{showDanmaku}}">
+        <text class="dm-item" for="{{item in activeDanmaku}}" style="left: {{item.left}}px; top: {{item.top}}px;">{{item.text}}</text>
+      </div>
+    </div>
+
+    <div class="controls" if="{{!immersiveMode}}">
+      <div class="top-bar">
+        <image class="back-icon" src="/common/images/icon_back.jpg" onclick="back" />
+        <text class="title-text">{{title}}</text>
+      </div>
+
+      <div class="speed-row">
+        <text class="speed-btn {{speedIndex === 0 ? 'speed-on' : ''}}" onclick="setSpeed0">0.75x</text>
+        <text class="speed-btn {{speedIndex === 1 ? 'speed-on' : ''}}" onclick="setSpeed1">1x</text>
+        <text class="speed-btn {{speedIndex === 2 ? 'speed-on' : ''}}" onclick="setSpeed2">2x</text>
+        <text class="speed-btn {{speedIndex === 3 ? 'speed-on' : ''}}" onclick="setSpeed3">4x</text>
+        <text class="dm-btn {{danmakuOn ? 'dm-on' : ''}}" onclick="toggleDanmaku">弹幕</text>
+      </div>
+
+      <div class="up-row" if="{{upName}}">
+        <text class="fs-up-name">UP: {{upName}}</text>
+      </div>
+
+      <div class="action-row">
+        <div class="action-btn" onclick="toggleLike">
+          <image class="action-icon" src="{{likeIcon}}" />
+          <text class="action-count">{{likeCountText}}</text>
+        </div>
+        <div class="action-btn" onclick="toggleCoin">
+          <image class="action-icon" src="{{coinIcon}}" />
+          <text class="action-count">{{coinCountText}}</text>
+        </div>
+        <div class="action-btn" onclick="toggleFavorite">
+          <image class="action-icon" src="{{favIcon}}" />
+          <text class="action-count">{{favCountText}}</text>
+        </div>
+      </div>
+
+      <div class="progress-row">
+        <div class="fs-progress-bar">
+          <div class="fs-progress-fill" style="width: {{progressWidth}}px;"></div>
+        </div>
+      </div>
+
+      <div class="pause-row" onclick="togglePause">
+        <image class="fs-pause-icon" src="{{pauseIcon}}" />
+        <text class="fs-pause-label">{{pauseLabel}}</text>
+      </div>
+    </div>
+
+    <div class="immersive-btn" onclick="toggleImmersive">
+      <text class="immersive-text">{{immersiveMode ? '显' : '隐'}}</text>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import storage from '@system.storage'
+import brightness from '@system.brightness'
+import fetchBridge from '../common/scripts/fetchbridge'
+
+export default {
+  private: {
+    bvid: '',
+    cid: '',
+    title: '',
+    pic: '/common/images/icon.png',
+    currentFrame: '/common/images/icon.png',
+    frameList: [],
+    frameIndex: 0,
+    frameTimer: null,
+    playCount: 0,
+    isPaused: false,
+    pauseIcon: '/common/images/vid_pause_new.png',
+    pauseLabel: '暂停',
+    progressWidth: 0,
+    upName: '',
+    likeCountText: '0',
+    coinCountText: '0',
+    favCountText: '0',
+    aid: '',
+    likeIcon: '/common/images/vid_like.png',
+    coinIcon: '/common/images/vid_coin.png',
+    favIcon: '/common/images/vid_star.png',
+    liked: false,
+    coined: false,
+    faved: false,
+    likeRetry: 0,
+    coinRetry: 0,
+    favRetry: 0,
+    spriteUrls: [],
+    imgXLen: 10,
+    imgYLen: 10,
+    imgXSize: 160,
+    imgYSize: 90,
+    indexList: [],
+    speedIndex: 1,
+    videoDuration: 0,
+    pageReady: false,
+    framesReady: false,
+    danmakuOn: false,
+    showDanmaku: false,
+    danmakuList: [],
+    danmakuIndex: 0,
+    activeDanmaku: [],
+    danmakuTimer: null,
+    danmakuIdCounter: 0,
+    dmLanes: [20, 40, 60, 80, 100, 120, 140],
+    dmReleaseCounter: 0,
+    dmLoading: false,
+    transcodeQuality: 'standard',
+    offline: 'false',
+    serverMode: false,
+    serverAddr: '',
+    serverSessionId: '',
+    serverPollTimer: null,
+    immersiveMode: false
+  },
+  onInit() {
+    this.bvid = this.bvid || ''
+    this.cid = this.cid || ''
+    this.title = this.title || ''
+    this.pic = this.pic || '/common/images/icon.png'
+    this.currentFrame = this.cleanImageUrl(this.pic) || '/common/images/icon.png'
+    this.loadDanmakuState()
+    this.loadTranscodeQuality()
+    if (this.serverMode === true && this.serverAddr && this.bvid) {
+      this.loadServerFrames()
+    } else if (this.offline === 'true' && this.bvid) {
+      this.loadOfflineFrames()
+    } else if (this.cid) {
+      this.loadVideoShot()
+    } else if (this.bvid) {
+      this.loadCidThenShot()
+    }
+  },
+  onReady() {
+    this.pageReady = true
+    this.tryStartPlayback()
+  },
+  onShow() {
+    this.applyKeepScreenOn()
+  },
+  applyKeepScreenOn() {
+    storage.get({
+      key: 'bili_keep_screen_on',
+      success: function(data) {
+        brightness.setKeepScreenOn({
+          keepScreenOn: (data === 'true'),
+          success: function() {},
+          fail: function() {}
+        })
+      },
+      fail: function() {}
+    })
+  },
+  tryStartPlayback() {
+    if (this.pageReady && this.framesReady && this.frameList.length > 0) {
+      this.framesReady = false
+      this.startPlayback()
+    }
+  },
+  loadDanmakuState() {
+    var self = this
+    storage.get({
+      key: 'bili_danmaku_enabled',
+      success: function(data) {
+        if (data === 'on') {
+          self.danmakuOn = true
+          self.showDanmaku = true
+        }
+      },
+      fail: function() {}
+    })
+  },
+  loadTranscodeQuality() {
+    var self = this
+    storage.get({
+      key: 'bili_transcode_quality',
+      success: function(data) {
+        if (data === '120p' || data === '480p' || data === '1080p') {
+          self.transcodeQuality = data
+        } else {
+          self.transcodeQuality = 'standard'
+        }
+      },
+      fail: function() {
+        self.transcodeQuality = 'standard'
+      }
+    })
+  },
+  loadOfflineFrames() {
+    var self = this
+    storage.get({
+      key: 'bili_offline_' + this.bvid,
+      success: function(data) {
+        if (!data) {
+          if (self.cid) {
+            self.loadVideoShot()
+          } else if (self.bvid) {
+            self.loadCidThenShot()
+          }
+          return
+        }
+        var cached = {}
+        try {
+          cached = JSON.parse(data)
+        } catch (e) {
+          if (self.cid) {
+            self.loadVideoShot()
+          } else if (self.bvid) {
+            self.loadCidThenShot()
+          }
+          return
+        }
+        if (!cached.frameList || cached.frameList.length === 0) {
+          if (self.cid) {
+            self.loadVideoShot()
+          } else if (self.bvid) {
+            self.loadCidThenShot()
+          }
+          return
+        }
+        self.cid = cached.cid || ''
+        self.spriteUrls = cached.spriteUrls || []
+        self.imgXLen = cached.imgXLen || 10
+        self.imgYLen = cached.imgYLen || 10
+        self.imgXSize = cached.imgXSize || 160
+        self.imgYSize = cached.imgYSize || 90
+        self.indexList = cached.indexList || []
+        self.transcodeQuality = cached.transcodeQuality || 'standard'
+        self.frameList = cached.frameList
+        self.framesReady = true
+        self.tryStartPlayback()
+      },
+      fail: function() {
+        if (self.cid) {
+          self.loadVideoShot()
+        } else if (self.bvid) {
+          self.loadCidThenShot()
+        }
+      }
+    })
+  },
+  cleanImageUrl(url) {
+    if (!url) return ''
+    if (url.indexOf('http') !== 0 && url.indexOf('//') === 0) {
+      url = 'https:' + url
+    }
+    if (url.indexOf('@') > 0) {
+      url = url.split('@')[0]
+    }
+    return url
+  },
+  loadCidThenShot() {
+    var self = this
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/view?bvid=' + this.bvid,
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') data = JSON.parse(data)
+        if (data && data.data) {
+          self.cid = data.data.cid ? '' + data.data.cid : ''
+          self.aid = data.data.aid ? '' + data.data.aid : ''
+          self.videoDuration = data.data.duration || 0
+          if (data.data.pic) {
+            self.pic = data.data.pic
+            self.currentFrame = self.cleanImageUrl(self.pic)
+          }
+          if (!self.title && data.data.title) {
+            self.title = data.data.title
+          }
+          if (self.cid) {
+            self.loadVideoShot()
+          }
+        }
+      },
+      fail: function() {}
+    })
+  },
+  loadServerFrames() {
+    var self = this
+    var addr = this.serverAddr
+    storage.get({
+      key: 'bili_cookie',
+      success: function(cookie) {
+        var url = 'http://' + addr + '/api/frames?bvid=' + self.bvid + '&cid=' + (self.cid || '') + '&cookie=' + (encodeURIComponent(cookie) || '')
+        fetchBridge.fetch({
+          url: url,
+          responseType: 'json',
+          timeout: 30000,
+          success: function(res) {
+            var data = res.data
+            if (typeof data === 'string') {
+              data = JSON.parse(data)
+            }
+            if (data && data.sessionId) {
+              self.serverSessionId = data.sessionId
+              if (data.status === 'ready' && data.frames && data.frames.length > 0) {
+                self.buildServerFrameList(addr, data.frames)
+              } else {
+                self.pollServerStatus(addr, data.sessionId)
+              }
+            }
+          },
+          fail: function() {}
+        })
+      },
+      fail: function() {
+        var url = 'http://' + addr + '/api/frames?bvid=' + self.bvid + '&cid=' + (self.cid || '')
+        fetchBridge.fetch({
+          url: url,
+          responseType: 'json',
+          timeout: 30000,
+          success: function(res) {
+            var data = res.data
+            if (typeof data === 'string') {
+              data = JSON.parse(data)
+            }
+            if (data && data.sessionId) {
+              self.serverSessionId = data.sessionId
+              if (data.status === 'ready' && data.frames && data.frames.length > 0) {
+                self.buildServerFrameList(addr, data.frames)
+              } else {
+                self.pollServerStatus(addr, data.sessionId)
+              }
+            }
+          },
+          fail: function() {}
+        })
+      }
+    })
+  },
+  pollServerStatus(addr, sessionId) {
+    var self = this
+    if (self.serverPollTimer) {
+      clearInterval(self.serverPollTimer)
+    }
+    var pollCount = 0
+    self.serverPollTimer = setInterval(function() {
+      pollCount = pollCount + 1
+      if (pollCount > 60) {
+        clearInterval(self.serverPollTimer)
+        self.serverPollTimer = null
+        return
+      }
+      fetchBridge.fetch({
+        url: 'http://' + addr + '/api/status/' + sessionId,
+        responseType: 'json',
+        timeout: 10000,
+        success: function(res) {
+          var data = res.data
+          if (typeof data === 'string') {
+            data = JSON.parse(data)
+          }
+          if (data && data.status === 'ready' && data.frames && data.frames.length > 0) {
+            clearInterval(self.serverPollTimer)
+            self.serverPollTimer = null
+            self.buildServerFrameList(addr, data.frames)
+          } else if (data && data.status === 'error') {
+            clearInterval(self.serverPollTimer)
+            self.serverPollTimer = null
+          }
+        },
+        fail: function() {}
+      })
+    }, 3000)
+  },
+  buildServerFrameList(addr, framePaths) {
+    var frameList = []
+    var i = 0
+    for (i = 0; i < framePaths.length; i++) {
+      frameList.push('http://' + addr + framePaths[i])
+    }
+    if (frameList.length === 0) {
+      return
+    }
+    this.frameList = frameList
+    this.framesReady = true
+    this.tryStartPlayback()
+  },
+  loadVideoShot() {
+    var self = this
+    if (!this.cid) return
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/player/videoshot?bvid=' + this.bvid + '&cid=' + this.cid + '&index=1',
+      responseType: 'json',
+      timeout: 15000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') data = JSON.parse(data)
+        if (data && data.code === 0 && data.data) {
+          var d = data.data
+          self.imgXLen = d.img_x_len || 10
+          self.imgYLen = d.img_y_len || 10
+          self.imgXSize = d.img_x_size || 160
+          self.imgYSize = d.img_y_size || 90
+          var urls = []
+          if (d.image && d.image.length > 0) {
+            var i = 0
+            for (i = 0; i < d.image.length; i++) {
+              var url = d.image[i]
+              if (url.indexOf('//') === 0) url = 'https:' + url
+              if (url.indexOf('http') === 0) urls.push(url)
+            }
+          }
+          var indexArr = d.index || []
+          if (urls.length > 0) {
+            self.spriteUrls = urls
+            self.indexList = indexArr
+            self.buildFrames()
+            return
+          }
+        }
+      },
+      fail: function() {}
+    })
+  },
+  buildFrames() {
+    var frameList = []
+    var i = 0
+    var framesPerSprite = this.imgXLen * this.imgYLen
+    var totalCapacity = framesPerSprite * this.spriteUrls.length
+    var frameCount = 0
+    if (this.indexList.length > 1) {
+      frameCount = this.indexList.length - 1
+    } else if (totalCapacity > 0) {
+      var lastSheetMin = this.imgXLen
+      frameCount = (this.spriteUrls.length - 1) * framesPerSprite + lastSheetMin
+      if (frameCount > totalCapacity) frameCount = totalCapacity
+    }
+    if (frameCount < 1) frameCount = 0
+    var cropW = this.imgXSize
+    var cropH = this.imgYSize
+    var qualitySuffix = 'a.jpg'
+    for (i = 0; i < frameCount; i++) {
+      var posInSheet = i % framesPerSprite
+      var col = posInSheet % this.imgXLen
+      var row = Math.floor(posInSheet / this.imgXLen)
+      var x = col * this.imgXSize
+      var y = row * this.imgYSize
+      var spriteIdx = Math.floor(i / framesPerSprite)
+      if (spriteIdx >= this.spriteUrls.length) {
+        break
+      }
+      var baseUrl = this.spriteUrls[spriteIdx]
+      if (baseUrl.indexOf('@') > 0) {
+        baseUrl = baseUrl.split('@')[0]
+      }
+      frameList.push(baseUrl + '@' + x + '-' + y + '-' + cropW + '-' + cropH + qualitySuffix)
+    }
+    if (frameList.length === 0) {
+      return
+    }
+    this.frameList = frameList
+    this.framesReady = true
+    this.tryStartPlayback()
+  },
+  getSpeedInterval(base) {
+    var speeds = [0.75, 1, 2, 4]
+    var speed = speeds[this.speedIndex] || 1
+    return Math.max(1, Math.floor(base / speed))
+  },
+  setSpeed0() { this.setSpeed(0) },
+  setSpeed1() { this.setSpeed(1) },
+  setSpeed2() { this.setSpeed(2) },
+  setSpeed3() { this.setSpeed(3) },
+  setSpeed(idx) {
+    this.speedIndex = idx
+    if (this.frameList.length > 0) {
+      this.restartPlayback()
+    }
+  },
+  toggleDanmaku() {
+    if (!this.danmakuOn) {
+      this.danmakuOn = true
+      this.showDanmaku = true
+      storage.set({ key: 'bili_danmaku_enabled', value: 'on' })
+      if (this.danmakuList.length === 0 && this.cid) {
+        if (!this.dmLoading) {
+          this.loadDanmakuV2()
+        }
+      } else if (this.danmakuList.length > 0) {
+        this.startDanmakuScroll()
+      }
+    } else {
+      this.danmakuOn = false
+      this.showDanmaku = false
+      storage.set({ key: 'bili_danmaku_enabled', value: 'off' })
+      this.stopDanmakuScroll()
+      this.activeDanmaku = []
+    }
+  },
+  loadDanmakuV2() {
+    var self = this
+    this.dmLoading = true
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/v2/dm/web/seg.so?type=1&oid=' + this.cid + '&segment_index=1',
+      responseType: 'bytes',
+      timeout: 30000,
+      header: {
+        'Referer': 'https://www.bilibili.com',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      success: function(res) {
+        self.dmLoading = false
+        var bytes = res.data
+        if (bytes && bytes.length > 0) {
+          var list = self.parseProtobufDanmaku(bytes, 150)
+          if (list.length > 0) {
+            self.danmakuList = list
+            self.danmakuIndex = 0
+            self.startDanmakuScroll()
+            return
+          }
+        }
+        self.loadDanmakuXML()
+      },
+      fail: function() {
+        self.dmLoading = false
+        self.loadDanmakuXML()
+      }
+    })
+  },
+  loadDanmakuXML() {
+    var self = this
+    this.dmLoading = true
+    fetchBridge.fetch({
+      url: 'https://comment.bilibili.com/' + this.cid + '.xml',
+      responseType: 'text',
+      timeout: 30000,
+      success: function(res) {
+        self.dmLoading = false
+        var xml = res.data
+        if (typeof xml !== 'string') return
+        var list = []
+        var regex = /<d p="([^"]+)">([^<]*)<\/d>/g
+        var match
+        var count = 0
+        while ((match = regex.exec(xml)) !== null && count < 150) {
+          var parts = match[1].split(',')
+          var time = parseFloat(parts[0]) || 0
+          var text = match[2]
+          if (text && text.length > 0 && text.length < 40) {
+            list.push({ time: time, text: text })
+            count++
+          }
+        }
+        list.sort(function(a, b) { return a.time - b.time })
+        self.danmakuList = list
+        self.danmakuIndex = 0
+        self.startDanmakuScroll()
+      },
+      fail: function() {
+        self.dmLoading = false
+      }
+    })
+  },
+  parseProtobufDanmaku(bytes, maxCount) {
+    var list = []
+    var pos = 0
+    var len = bytes.length
+    var max = maxCount || 200
+
+    function readVarint() {
+      var result = 0
+      var shift = 0
+      while (pos < len) {
+        var b = bytes[pos]
+        pos++
+        result |= (b & 0x7f) << shift
+        shift += 7
+        if (!(b & 0x80)) break
+      }
+      return result
+    }
+
+    function readUtf8(start, length) {
+      var str = ''
+      var i = start
+      var end = start + length
+      while (i < end) {
+        var b = bytes[i]
+        if (b < 0x80) {
+          str += String.fromCharCode(b)
+          i++
+        } else if (b >= 0xC0 && b < 0xE0) {
+          var b2 = bytes[i + 1] || 0
+          str += String.fromCharCode(((b & 31) << 6) | (b2 & 63))
+          i += 2
+        } else if (b >= 0xE0 && b < 0xF0) {
+          var b2 = bytes[i + 1] || 0
+          var b3 = bytes[i + 2] || 0
+          str += String.fromCharCode(((b & 15) << 12) | ((b2 & 63) << 6) | (b3 & 63))
+          i += 3
+        } else if (b >= 0xF0) {
+          var b2 = bytes[i + 1] || 0
+          var b3 = bytes[i + 2] || 0
+          var b4 = bytes[i + 3] || 0
+          var cp = ((b & 7) << 18) | ((b2 & 63) << 12) | ((b3 & 63) << 6) | (b4 & 63)
+          cp = cp - 0x10000
+          str += String.fromCharCode(0xD800 + (cp >> 10))
+          str += String.fromCharCode(0xDC00 + (cp & 1023))
+          i += 4
+        } else {
+          i++
+        }
+      }
+      return str
+    }
+
+    while (pos < len) {
+      if (list.length >= max) break
+      var tag = readVarint()
+      var fieldNum = tag >> 3
+      var wireType = tag & 0x07
+
+      if (wireType === 2 && fieldNum === 1) {
+        var elemLen = readVarint()
+        var elemEnd = pos + elemLen
+        var progress = 0
+        var content = ''
+        while (pos < elemEnd) {
+          var elemTag = readVarint()
+          var elemField = elemTag >> 3
+          var elemWire = elemTag & 0x07
+          if (elemWire === 0) {
+            var val = readVarint()
+            if (elemField === 2) {
+              progress = val
+            }
+          } else if (elemWire === 2) {
+            var strLen = readVarint()
+            if (elemField === 7) {
+              content = readUtf8(pos, strLen)
+            }
+            pos += strLen
+          } else if (elemWire === 5) {
+            pos += 4
+          } else if (elemWire === 1) {
+            pos += 8
+          } else {
+            break
+          }
+        }
+        if (pos > elemEnd) pos = elemEnd
+        if (content && content.length > 0 && content.length < 40 && progress >= 0) {
+          list.push({
+            time: progress / 1000,
+            text: content
+          })
+        }
+      } else if (wireType === 0) {
+        readVarint()
+      } else if (wireType === 2) {
+        var skipLen = readVarint()
+        pos += skipLen
+      } else if (wireType === 5) {
+        pos += 4
+      } else if (wireType === 1) {
+        pos += 8
+      } else {
+        break
+      }
+    }
+
+    list.sort(function(a, b) { return a.time - b.time })
+    return list
+  },
+  startDanmakuScroll() {
+    if (this.danmakuTimer) {
+      clearInterval(this.danmakuTimer)
+      this.danmakuTimer = null
+    }
+    this.activeDanmaku = []
+    this.danmakuIndex = 0
+    this.danmakuIdCounter = 0
+    this.dmReleaseCounter = 0
+    var initCount = Math.min(this.dmLanes.length, this.danmakuList.length)
+    var i
+    for (i = 0; i < initCount; i++) {
+      this.releaseOneDanmaku(336 + i * 60, i)
+    }
+    this.activeDanmaku = this.activeDanmaku.concat([])
+    var self = this
+    this.danmakuTimer = setInterval(function() {
+      self.tickDanmaku()
+    }, 50)
+  },
+  releaseOneDanmaku(initLeft, forceLane) {
+    if (this.danmakuList.length === 0) return false
+    if (this.danmakuIndex >= this.danmakuList.length) {
+      this.danmakuIndex = 0
+    }
+    var dm = this.danmakuList[this.danmakuIndex]
+    var estWidth = dm.text.length * 14 + 10
+
+    var lane = -1
+    if (forceLane !== undefined && forceLane >= 0 && forceLane < this.dmLanes.length) {
+      lane = forceLane
+    } else {
+      var bestLane = -1
+      var minRightEdge = 999
+      for (var l = 0; l < this.dmLanes.length; l++) {
+        var laneRightmost = -999
+        for (var j = 0; j < this.activeDanmaku.length; j++) {
+          if (this.activeDanmaku[j].top === this.dmLanes[l]) {
+            var rightEdge = this.activeDanmaku[j].left + this.activeDanmaku[j].width
+            if (rightEdge > laneRightmost) {
+              laneRightmost = rightEdge
+            }
+          }
+        }
+        if (laneRightmost < 336 && laneRightmost < minRightEdge) {
+          minRightEdge = laneRightmost
+          bestLane = l
+        }
+      }
+      lane = bestLane
+    }
+    if (lane < 0) {
+      return false
+    }
+    this.danmakuIndex++
+    this.danmakuIdCounter++
+    this.activeDanmaku.push({
+      id: this.danmakuIdCounter,
+      text: dm.text,
+      top: this.dmLanes[lane],
+      left: initLeft !== undefined ? initLeft : 336,
+      width: estWidth,
+      speed: 3 + (dm.text.length > 15 ? 1 : 0)
+    })
+    return true
+  },
+  stopDanmakuScroll() {
+    if (this.danmakuTimer) {
+      clearInterval(this.danmakuTimer)
+      this.danmakuTimer = null
+    }
+  },
+  tickDanmaku() {
+    if (!this.danmakuOn || this.danmakuList.length === 0) return
+    var newItems = []
+    var i
+    for (i = 0; i < this.activeDanmaku.length; i++) {
+      var item = this.activeDanmaku[i]
+      item.left = item.left - item.speed
+      if (item.left > -300) {
+        newItems.push(item)
+      }
+    }
+    this.dmReleaseCounter++
+    if (this.dmReleaseCounter >= 10) {
+      this.dmReleaseCounter = 0
+      if (newItems.length < 20) {
+        this.activeDanmaku = newItems
+        var released = this.releaseOneDanmaku(336)
+        newItems = this.activeDanmaku
+        if (!released) {
+          this.dmReleaseCounter = 6
+        }
+      }
+    }
+    if (this.danmakuIndex >= this.danmakuList.length) {
+      this.danmakuIndex = 0
+    }
+    this.activeDanmaku = newItems
+  },
+  restartPlayback() {
+    if (this.frameTimer) {
+      clearInterval(this.frameTimer)
+      this.frameTimer = null
+    }
+    var self = this
+    var interval = this.getSpeedInterval(700)
+    this.frameTimer = setInterval(function() {
+      if (self.isPaused) return
+      self.frameIndex = self.frameIndex + 1
+      if (self.frameIndex >= self.frameList.length) {
+        self.frameIndex = 0
+      }
+      self.currentFrame = self.frameList[self.frameIndex]
+      self.updateProgress()
+    }, interval)
+  },
+  startPlayback() {
+    var self = this
+    if (this.frameList.length === 0) return
+    if (this.frameTimer) {
+      clearInterval(this.frameTimer)
+      this.frameTimer = null
+    }
+    this.frameIndex = 0
+    this.playCount = 0
+    this.isPaused = false
+    this.pauseIcon = '/common/images/vid_pause_new.png'
+    this.pauseLabel = '暂停'
+    this.currentFrame = this.frameList[0]
+    this.updateProgress()
+    if (this.danmakuOn && this.cid && this.danmakuList.length === 0) {
+      this.loadDanmakuV2()
+    } else if (this.danmakuOn && this.danmakuList.length > 0) {
+      this.startDanmakuScroll()
+    }
+    var interval = this.getSpeedInterval(700)
+    this.frameTimer = setInterval(function() {
+      if (self.isPaused) return
+      self.frameIndex = self.frameIndex + 1
+      if (self.frameIndex >= self.frameList.length) {
+        self.frameIndex = 0
+      }
+      self.currentFrame = self.frameList[self.frameIndex]
+      self.updateProgress()
+    }, interval)
+  },
+  updateProgress() {
+    if (this.frameList.length === 0) return
+    var pct = (this.frameIndex + 1) / this.frameList.length
+    this.progressWidth = Math.floor(pct * 300)
+  },
+  getCookieValue(cookie, key) {
+    var parts = cookie.split(';')
+    var i = 0
+    for (i = 0; i < parts.length; i++) {
+      var p = parts[i].trim()
+      if (p.indexOf(key + '=') === 0) {
+        return p.substring(key.length + 1)
+      }
+    }
+    return ''
+  },
+  getAuth(callback) {
+    var self = this
+    storage.get({
+      key: 'bili_cookie',
+      success: function(cookie) {
+        if (!cookie || cookie.length < 10) {
+          callback('', '')
+          return
+        }
+        callback(cookie, self.getCookieValue(cookie, 'bili_jct'))
+      },
+      fail: function() {
+        callback('', '')
+      }
+    })
+  },
+  ensureAid(callback) {
+    var self = this
+    if (this.aid) {
+      callback(true)
+      return
+    }
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/view?bvid=' + this.bvid,
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.data && data.data.aid) {
+          self.aid = '' + data.data.aid
+          callback(true)
+        } else {
+          callback(false)
+        }
+      },
+      fail: function() {
+        callback(false)
+      }
+    })
+  },
+  toggleLike() {
+    this.likeRetry = 0
+    this.syncLike(null)
+  },
+  syncLike(done) {
+    var self = this
+    this.ensureAid(function(ok) {
+      if (!ok) {
+        if (done) { done(false) }
+        return
+      }
+      self.getAuth(function(cookie, csrf) {
+        if (!cookie || !csrf) {
+          if (done) { done(false) }
+          return
+        }
+        fetchBridge.fetch({
+          url: 'https://api.bilibili.com/x/web-interface/archive/like',
+          method: 'POST',
+          data: 'bvid=' + self.bvid + '&like=1&csrf=' + csrf,
+          header: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Cookie': cookie,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0',
+            'Referer': 'https://www.bilibili.com',
+            'Origin': 'https://www.bilibili.com',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'zh-CN,zh;q=0.8'
+          },
+          responseType: 'json',
+          timeout: 45000,
+          success: function(res) {
+            var data = res.data
+            if (typeof data === 'string') {
+              data = JSON.parse(data)
+            }
+            if (data && (data.code === 0 || data.code === 65006)) {
+              self.liked = true
+              self.likeRetry = 0
+              self.likeIcon = '/common/images/vid_liked.png'
+              if (done) { done(true) }
+            } else {
+              self.likeRetry = self.likeRetry + 1
+              if (self.likeRetry <= 4) {
+                setTimeout(function() {
+                  self.syncLike(done)
+                }, 1500)
+              } else {
+                if (done) { done(false) }
+              }
+            }
+          },
+          fail: function() {
+            self.likeRetry = self.likeRetry + 1
+            if (self.likeRetry <= 4) {
+              setTimeout(function() {
+                self.syncLike(done)
+              }, 1500)
+            } else {
+              if (done) { done(false) }
+            }
+          }
+        })
+      })
+    })
+  },
+  toggleCoin() {
+    this.coinRetry = 0
+    this.syncCoin(null)
+  },
+  syncCoin(done) {
+    var self = this
+    self.getAuth(function(cookie, csrf) {
+      if (!cookie || !csrf) {
+        if (done) { done(false) }
+        return
+      }
+      fetchBridge.fetch({
+        url: 'https://api.bilibili.com/x/web-interface/coin/add',
+        method: 'POST',
+        data: 'bvid=' + self.bvid + '&multiply=1&csrf=' + csrf,
+        header: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': cookie,
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0',
+          'Referer': 'https://www.bilibili.com',
+          'Origin': 'https://www.bilibili.com',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'zh-CN,zh;q=0.8'
+        },
+        responseType: 'json',
+        timeout: 45000,
+        success: function(res) {
+          var data = res.data
+          if (typeof data === 'string') {
+            data = JSON.parse(data)
+          }
+          if (data && data.code === 0) {
+            self.coined = true
+            self.coinRetry = 0
+            self.coinIcon = '/common/images/vid_coined.png'
+            if (done) { done(true) }
+          } else if (data && data.code === 34005) {
+            self.coined = true
+            self.coinRetry = 0
+            self.coinIcon = '/common/images/vid_coined.png'
+            if (done) { done(true) }
+          } else {
+            self.coinRetry = self.coinRetry + 1
+            if (self.coinRetry <= 4) {
+              setTimeout(function() {
+                self.syncCoin(done)
+              }, 1500)
+            } else {
+              if (done) { done(false) }
+            }
+          }
+        },
+        fail: function() {
+          self.coinRetry = self.coinRetry + 1
+          if (self.coinRetry <= 4) {
+            setTimeout(function() {
+              self.syncCoin(done)
+            }, 1500)
+          } else {
+            if (done) { done(false) }
+          }
+        }
+      })
+    })
+  },
+  toggleFavorite() {
+    this.favRetry = 0
+    this.syncFavorite(null)
+  },
+  syncFavorite(done) {
+    var self = this
+    this.ensureAid(function(ok) {
+      if (!ok) {
+        if (done) { done(false) }
+        return
+      }
+      self.getAuth(function(cookie, csrf) {
+        var mid = self.getCookieValue(cookie, 'DedeUserID')
+        if (!cookie || !csrf || !mid) {
+          if (done) { done(false) }
+          return
+        }
+        fetchBridge.fetch({
+          url: 'https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=' + mid + '&type=2',
+          header: {
+            'Cookie': cookie,
+            'User-Agent': 'Mozilla/5.0',
+            'Referer': 'https://www.bilibili.com/video/' + self.bvid
+          },
+          responseType: 'json',
+          timeout: 30000,
+          success: function(res) {
+            var data = res.data
+            if (typeof data === 'string') {
+              data = JSON.parse(data)
+            }
+            var mediaId = ''
+            if (data && data.data && data.data.list && data.data.list.length > 0) {
+              mediaId = data.data.list[0].id || data.data.list[0].media_id || ''
+            }
+            if (!mediaId) {
+              self.favRetry = self.favRetry + 1
+              if (self.favRetry <= 2) {
+                setTimeout(function() {
+                  self.syncFavorite(done)
+                }, 2000)
+              } else {
+                if (done) { done(false) }
+              }
+              return
+            }
+            self.addFavorite(cookie, csrf, mediaId, done)
+          },
+          fail: function() {
+            self.favRetry = self.favRetry + 1
+            if (self.favRetry <= 2) {
+              setTimeout(function() {
+                self.syncFavorite(done)
+              }, 2000)
+            } else {
+              if (done) { done(false) }
+            }
+          }
+        })
+      })
+    })
+  },
+  addFavorite(cookie, csrf, mediaId, done) {
+    var self = this
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/v3/fav/resource/deal',
+      method: 'POST',
+      data: 'rid=' + this.aid + '&type=2&add_media_ids=' + mediaId + '&del_media_ids=&csrf=' + csrf,
+      header: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cookie': cookie,
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://www.bilibili.com/video/' + this.bvid
+      },
+      responseType: 'json',
+      timeout: 30000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.code === 0) {
+          self.faved = true
+          self.favRetry = 0
+          self.favIcon = '/common/images/vid_stared.png'
+          if (done) { done(true) }
+        } else {
+          if (done) { done(false) }
+        }
+      },
+      fail: function() {
+        self.favRetry = self.favRetry + 1
+        if (self.favRetry <= 2) {
+          setTimeout(function() {
+            self.addFavorite(cookie, csrf, mediaId, done)
+          }, 2000)
+        } else {
+          if (done) { done(false) }
+        }
+      }
+    })
+  },
+  togglePause() {
+    this.isPaused = !this.isPaused
+    if (this.isPaused) {
+      this.pauseIcon = '/common/images/vid_pause_new.png'
+      this.pauseLabel = '继续'
+    } else {
+      this.pauseIcon = '/common/images/vid_pause_new.png'
+      this.pauseLabel = '暂停'
+    }
+  },
+  toggleImmersive() {
+    this.immersiveMode = !this.immersiveMode
+  },
+  back() {
+    this.fullCleanup()
+    router.back()
+  },
+  onBackPress() {
+    this.fullCleanup()
+    router.back()
+    return true
+  },
+  fullCleanup() {
+    if (this.frameTimer) {
+      clearInterval(this.frameTimer)
+      this.frameTimer = null
+    }
+    this.stopDanmakuScroll()
+    if (this.serverPollTimer) {
+      clearInterval(this.serverPollTimer)
+      this.serverPollTimer = null
+    }
+    this.frameList = []
+    this.frameIndex = 0
+    this.playCount = 0
+    this.spriteUrls = []
+    this.indexList = []
+    this.imgXLen = 10
+    this.imgYLen = 10
+    this.imgXSize = 160
+    this.imgYSize = 90
+    this.danmakuList = []
+    this.danmakuIndex = 0
+    this.activeDanmaku = []
+    this.danmakuIdCounter = 0
+    this.dmReleaseCounter = 0
+    this.dmLoading = false
+    this.isPaused = false
+    this.progressWidth = 0
+    this.framesReady = false
+    this.pageReady = false
+    this.currentFrame = '/common/images/icon.png'
+  },
+  onDestroy() {
+    this.fullCleanup()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  background-color: #000000;
+  overflow: hidden;
+}
+.player-area {
+  width: 336px;
+  height: 189px;
+  background-color: #000000;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+.player-img {
+  width: 336px;
+  height: 189px;
+}
+.danmaku-layer {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 336px;
+  height: 189px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.dm-item {
+  position: absolute;
+  white-space: nowrap;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+.controls {
+  width: 336px;
+  flex-direction: column;
+  padding: 8px 12px;
+}
+.top-bar {
+  width: 312px;
+  height: 36px;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.back-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+}
+.title-text {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+  margin-left: 8px;
+  lines: 1;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+.speed-row {
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.speed-btn {
+  color: rgba(255,255,255,0.7);
+  font-size: 11px;
+  font-weight: bold;
+  background-color: rgba(0,0,0,0.6);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.15);
+  border-radius: 12px;
+  padding: 4px 3px;
+  width: 46px;
+  text-align: center;
+  margin-right: 4px;
+}
+.speed-on {
+  color: #fb7299;
+  background-color: rgba(251,114,153,0.25);
+  border-color: rgba(251,114,153,0.5);
+}
+.dm-btn {
+  color: rgba(255,255,255,0.7);
+  font-size: 11px;
+  font-weight: bold;
+  background-color: rgba(0,0,0,0.6);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.15);
+  border-radius: 12px;
+  padding: 4px 3px;
+  width: 46px;
+  text-align: center;
+}
+.dm-on {
+  color: #00e5ff;
+  background-color: rgba(0,229,255,0.25);
+  border-color: rgba(0,229,255,0.5);
+}
+.up-row {
+  margin-bottom: 6px;
+}
+.fs-up-name {
+  color: rgba(255,255,255,0.8);
+  font-size: 12px;
+  font-weight: bold;
+  lines: 1;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+.action-row {
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.action-btn {
+  flex-direction: row;
+  align-items: center;
+  margin-right: 8px;
+  background-color: rgba(0,0,0,0.5);
+  border-radius: 8px;
+  padding: 3px 6px;
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+}
+.action-icon {
+  width: 18px;
+  height: 18px;
+}
+.action-count {
+  color: rgba(255,255,255,0.7);
+  font-size: 10px;
+  margin-left: 3px;
+}
+.progress-row {
+  margin-bottom: 8px;
+}
+.fs-progress-bar {
+  width: 300px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: rgba(255,255,255,0.2);
+}
+.fs-progress-fill {
+  height: 4px;
+  border-radius: 2px;
+  background-color: #fb7299;
+}
+.pause-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0,0,0,0.6);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.15);
+  border-radius: 20px;
+  padding: 6px 12px;
+  width: 130px;
+  height: 34px;
+}
+.fs-pause-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+}
+.fs-pause-label {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+}
+.immersive-btn {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  background-color: rgba(0,0,0,0.6);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.2);
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+.immersive-text {
+  color: #fb7299;
+  font-size: 16px;
+  font-weight: bold;
+}
+</style>

@@ -1,0 +1,1608 @@
+<template>
+  <div class="page">
+    <div class="bili-top">
+      <div class="bili-avatar" onclick="goMy" if="{{logged}}">
+        <image class="bili-avatar-img" src="{{userAvatar}}" />
+      </div>
+      <div class="bili-login-btn" onclick="goMy" if="{{!logged}}">
+        <text class="bili-login-text">登录</text>
+      </div>
+      <div class="bili-search-bar" onclick="goSearch">
+        <image class="bili-search-icon-img" src="/common/images/icon_search.png" />
+        <text class="bili-search-text">搜索视频和UP主</text>
+      </div>
+      <div class="bili-msg-btn" onclick="goMessages">
+        <image class="bili-msg-icon-img" src="/common/images/icon_message.png" />
+      </div>
+    </div>
+
+    <div class="nav-glass" if="{{!showError}}">
+      <div class="bili-tabs">
+        <div class="bili-tab" onclick="switchTab('live')">
+          <text class="bili-tab-text {{tabLiveClass}}">直播</text>
+          <div class="bili-tab-bar {{tabLiveBarClass}}"></div>
+        </div>
+        <div class="bili-tab" onclick="switchTab('rec')">
+          <text class="bili-tab-text {{tabRecClass}}">推荐</text>
+          <div class="bili-tab-bar {{tabRecBarClass}}"></div>
+        </div>
+        <div class="bili-tab" onclick="switchTab('hot')">
+          <text class="bili-tab-text {{tabHotClass}}">热门</text>
+          <div class="bili-tab-bar {{tabHotBarClass}}"></div>
+        </div>
+        <div class="bili-tab" onclick="goSettings">
+          <text class="bili-tab-text">设置</text>
+        </div>
+      </div>
+      <div class="section">
+        <text class="section-title" onclick="refresh">{{sectionTitle}}</text>
+        <text class="section-more {{liveLoadError ? 'live-refresh-hint' : ''}}" onclick="onTipClick">{{loadTip}}</text>
+      </div>
+    </div>
+
+    <div class="list" if="{{showRecList && !showError}}">
+      <div class="video-card" onclick="openVideo1">
+        <div class="cover">
+          <image class="cover-img" src="{{v1Pic}}" />
+          <text class="cover-tag">{{v1Tag}}</text>
+        </div>
+        <text class="video-title">{{v1Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo2">
+        <div class="cover">
+          <image class="cover-img" src="{{v2Pic}}" />
+          <text class="cover-tag">{{v2Tag}}</text>
+        </div>
+        <text class="video-title">{{v2Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo3">
+        <div class="cover">
+          <image class="cover-img" src="{{v3Pic}}" />
+          <text class="cover-tag">{{v3Tag}}</text>
+        </div>
+        <text class="video-title">{{v3Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo4">
+        <div class="cover">
+          <image class="cover-img" src="{{v4Pic}}" />
+          <text class="cover-tag">{{v4Tag}}</text>
+        </div>
+        <text class="video-title">{{v4Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo5">
+        <div class="cover">
+          <image class="cover-img" src="{{v5Pic}}" />
+          <text class="cover-tag">{{v5Tag}}</text>
+        </div>
+        <text class="video-title">{{v5Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo6">
+        <div class="cover">
+          <image class="cover-img" src="{{v6Pic}}" />
+          <text class="cover-tag">{{v6Tag}}</text>
+        </div>
+        <text class="video-title">{{v6Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo7">
+        <div class="cover">
+          <image class="cover-img" src="{{v7Pic}}" />
+          <text class="cover-tag">{{v7Tag}}</text>
+        </div>
+        <text class="video-title">{{v7Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo8">
+        <div class="cover">
+          <image class="cover-img" src="{{v8Pic}}" />
+          <text class="cover-tag">{{v8Tag}}</text>
+        </div>
+        <text class="video-title">{{v8Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo9">
+        <div class="cover">
+          <image class="cover-img" src="{{v9Pic}}" />
+          <text class="cover-tag">{{v9Tag}}</text>
+        </div>
+        <text class="video-title">{{v9Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo10">
+        <div class="cover">
+          <image class="cover-img" src="{{v10Pic}}" />
+          <text class="cover-tag">{{v10Tag}}</text>
+        </div>
+        <text class="video-title">{{v10Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo11">
+        <div class="cover">
+          <image class="cover-img" src="{{v11Pic}}" />
+          <text class="cover-tag">{{v11Tag}}</text>
+        </div>
+        <text class="video-title">{{v11Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo12">
+        <div class="cover">
+          <image class="cover-img" src="{{v12Pic}}" />
+          <text class="cover-tag">{{v12Tag}}</text>
+        </div>
+        <text class="video-title">{{v12Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo13">
+        <div class="cover">
+          <image class="cover-img" src="{{v13Pic}}" />
+          <text class="cover-tag">{{v13Tag}}</text>
+        </div>
+        <text class="video-title">{{v13Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo14">
+        <div class="cover">
+          <image class="cover-img" src="{{v14Pic}}" />
+          <text class="cover-tag">{{v14Tag}}</text>
+        </div>
+        <text class="video-title">{{v14Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo15">
+        <div class="cover">
+          <image class="cover-img" src="{{v15Pic}}" />
+          <text class="cover-tag">{{v15Tag}}</text>
+        </div>
+        <text class="video-title">{{v15Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo16">
+        <div class="cover">
+          <image class="cover-img" src="{{v16Pic}}" />
+          <text class="cover-tag">{{v16Tag}}</text>
+        </div>
+        <text class="video-title">{{v16Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo17">
+        <div class="cover">
+          <image class="cover-img" src="{{v17Pic}}" />
+          <text class="cover-tag">{{v17Tag}}</text>
+        </div>
+        <text class="video-title">{{v17Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo18">
+        <div class="cover">
+          <image class="cover-img" src="{{v18Pic}}" />
+          <text class="cover-tag">{{v18Tag}}</text>
+        </div>
+        <text class="video-title">{{v18Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo19">
+        <div class="cover">
+          <image class="cover-img" src="{{v19Pic}}" />
+          <text class="cover-tag">{{v19Tag}}</text>
+        </div>
+        <text class="video-title">{{v19Title}}</text>
+      </div>
+      <div class="video-card" onclick="openVideo20">
+        <div class="cover">
+          <image class="cover-img" src="{{v20Pic}}" />
+          <text class="cover-tag">{{v20Tag}}</text>
+        </div>
+        <text class="video-title">{{v20Title}}</text>
+      </div>
+    </div>
+    <image class="preload-img" src="{{preloadFrame}}" if="{{showRecList && !showError}}" />
+    <div class="error-hint" if="{{showError}}">
+      <text class="error-hint-text">网络错误，请检查连接</text>
+      <div class="error-hint-btns">
+        <text class="hint-btn retry" onclick="retryLoad">重试</text>
+        <text class="hint-btn" onclick="doExit">退出</text>
+      </div>
+    </div>
+    <div class="list" if="{{showLiveList && !showError}}">
+      <div class="video-card" onclick="openLive1">
+      <div class="cover">
+        <image class="cover-img" src="{{l1Pic}}" />
+        <text class="cover-tag">{{l1Online}}</text>
+      </div>
+      <text class="video-title">{{l1Title}}</text>
+      <div class="live-up-row" onclick="goLiveUp1">
+        <image class="live-up-face" src="{{l1Face}}" />
+        <text class="live-up-name">{{l1Uname}}</text>
+      </div>
+    </div>
+    <div class="video-card" onclick="openLive2">
+      <div class="cover">
+        <image class="cover-img" src="{{l2Pic}}" />
+        <text class="cover-tag">{{l2Online}}</text>
+      </div>
+      <text class="video-title">{{l2Title}}</text>
+      <div class="live-up-row" onclick="goLiveUp2">
+        <image class="live-up-face" src="{{l2Face}}" />
+        <text class="live-up-name">{{l2Uname}}</text>
+      </div>
+    </div>
+    <div class="video-card" onclick="openLive3">
+      <div class="cover">
+        <image class="cover-img" src="{{l3Pic}}" />
+        <text class="cover-tag">{{l3Online}}</text>
+      </div>
+      <text class="video-title">{{l3Title}}</text>
+      <div class="live-up-row" onclick="goLiveUp3">
+        <image class="live-up-face" src="{{l3Face}}" />
+        <text class="live-up-name">{{l3Uname}}</text>
+      </div>
+    </div>
+    <div class="video-card" onclick="openLive4">
+      <div class="cover">
+        <image class="cover-img" src="{{l4Pic}}" />
+        <text class="cover-tag">{{l4Online}}</text>
+      </div>
+      <text class="video-title">{{l4Title}}</text>
+      <div class="live-up-row" onclick="goLiveUp4">
+        <image class="live-up-face" src="{{l4Face}}" />
+        <text class="live-up-name">{{l4Uname}}</text>
+      </div>
+    </div>
+    <div class="video-card" onclick="openLive5">
+      <div class="cover">
+        <image class="cover-img" src="{{l5Pic}}" />
+        <text class="cover-tag">{{l5Online}}</text>
+      </div>
+      <text class="video-title">{{l5Title}}</text>
+      <div class="live-up-row" onclick="goLiveUp5">
+        <image class="live-up-face" src="{{l5Face}}" />
+        <text class="live-up-name">{{l5Uname}}</text>
+      </div>
+    </div>
+    <div class="video-card" onclick="openLive6">
+      <div class="cover">
+        <image class="cover-img" src="{{l6Pic}}" />
+        <text class="cover-tag">{{l6Online}}</text>
+      </div>
+      <text class="video-title">{{l6Title}}</text>
+      <div class="live-up-row" onclick="goLiveUp6">
+        <image class="live-up-face" src="{{l6Face}}" />
+        <text class="live-up-name">{{l6Uname}}</text>
+      </div>
+    </div>
+    <div class="video-card" onclick="openLive7">
+      <div class="cover">
+        <image class="cover-img" src="{{l7Pic}}" />
+        <text class="cover-tag">{{l7Online}}</text>
+      </div>
+      <text class="video-title">{{l7Title}}</text>
+      <div class="live-up-row" onclick="goLiveUp7">
+        <image class="live-up-face" src="{{l7Face}}" />
+        <text class="live-up-name">{{l7Uname}}</text>
+      </div>
+    </div>
+    <div class="video-card" onclick="openLive8">
+      <div class="cover">
+        <image class="cover-img" src="{{l8Pic}}" />
+        <text class="cover-tag">{{l8Online}}</text>
+      </div>
+      <text class="video-title">{{l8Title}}</text>
+      <div class="live-up-row" onclick="goLiveUp8">
+        <image class="live-up-face" src="{{l8Face}}" />
+        <text class="live-up-name">{{l8Uname}}</text>
+      </div>
+    </div>
+    <div class="video-card" onclick="openLive9">
+      <div class="cover">
+        <image class="cover-img" src="{{l9Pic}}" />
+        <text class="cover-tag">{{l9Online}}</text>
+      </div>
+      <text class="video-title">{{l9Title}}</text>
+      <div class="live-up-row" onclick="goLiveUp9">
+        <image class="live-up-face" src="{{l9Face}}" />
+        <text class="live-up-name">{{l9Uname}}</text>
+      </div>
+    </div>
+    <div class="video-card" onclick="openLive10">
+      <div class="cover">
+        <image class="cover-img" src="{{l10Pic}}" />
+        <text class="cover-tag">{{l10Online}}</text>
+      </div>
+      <text class="video-title">{{l10Title}}</text>
+      <div class="live-up-row" onclick="goLiveUp10">
+        <image class="live-up-face" src="{{l10Face}}" />
+        <text class="live-up-name">{{l10Uname}}</text>
+      </div>
+    </div>
+    </div>
+    <div class="list hot-list" if="{{showHotList && !showError}}">
+      <div class="hot-item" onclick="openHot1" if="{{h1Show}}">
+        <text class="hot-rank gold">1</text>
+        <text class="hot-word">{{h1}}</text>
+      </div>
+      <div class="hot-item" onclick="openHot2" if="{{h2Show}}">
+        <text class="hot-rank silver">2</text>
+        <text class="hot-word">{{h2}}</text>
+      </div>
+      <div class="hot-item" onclick="openHot3" if="{{h3Show}}">
+        <text class="hot-rank bronze">3</text>
+        <text class="hot-word">{{h3}}</text>
+      </div>
+      <div class="hot-item" onclick="openHot4" if="{{h4Show}}">
+        <text class="hot-rank">4</text>
+        <text class="hot-word">{{h4}}</text>
+      </div>
+      <div class="hot-item" onclick="openHot5" if="{{h5Show}}">
+        <text class="hot-rank">5</text>
+        <text class="hot-word">{{h5}}</text>
+      </div>
+      <div class="hot-item" onclick="openHot6" if="{{h6Show}}">
+        <text class="hot-rank">6</text>
+        <text class="hot-word">{{h6}}</text>
+      </div>
+      <div class="hot-item" onclick="openHot7" if="{{h7Show}}">
+        <text class="hot-rank">7</text>
+        <text class="hot-word">{{h7}}</text>
+      </div>
+      <div class="hot-item" onclick="openHot8" if="{{h8Show}}">
+        <text class="hot-rank">8</text>
+        <text class="hot-word">{{h8}}</text>
+      </div>
+      <div class="hot-item" onclick="openHot9" if="{{h9Show}}">
+        <text class="hot-rank">9</text>
+        <text class="hot-word">{{h9}}</text>
+      </div>
+      <div class="hot-item" onclick="openHot10" if="{{h10Show}}">
+        <text class="hot-rank">10</text>
+        <text class="hot-word">{{h10}}</text>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetch from '@system.fetch'
+import storage from '@system.storage'
+import app from '@system.app'
+
+export default {
+  private: {
+    loadTip: '加载中',
+    logged: false,
+    userAvatar: '/common/images/icon.png',
+    isLoading: true,
+    showError: false,
+    loadedCount: 0,
+    spinDeg: 0,
+    spinTimer: null,
+    pendingPics: [],
+    picLoadIndex: 0,
+    picTimer: null,
+    preloadFrames: [],
+    preloadIndex: 0,
+    preloadTimer: null,
+    preloadFrame: '/common/images/icon.png',
+    refreshPage: 1,
+    cookie: '',
+    v1Title: '正在加载推荐',
+    v1Stat: 'api.bilibili.com',
+    v1Bvid: '',
+    v1Cid: '',
+    v1Pic: '/common/images/icon.png',
+    v1Tag: '推荐',
+    v2Title: '正在加载推荐',
+    v2Stat: 'api.bilibili.com',
+    v2Bvid: '',
+    v2Cid: '',
+    v2Pic: '/common/images/icon.png',
+    v2Tag: '推荐',
+    v3Title: '正在加载推荐',
+    v3Stat: 'api.bilibili.com',
+    v3Bvid: '',
+    v3Cid: '',
+    v3Pic: '/common/images/icon.png',
+    v3Tag: '推荐',
+    v4Title: '正在加载推荐',
+    v4Stat: 'api.bilibili.com',
+    v4Bvid: '',
+    v4Cid: '',
+    v4Pic: '/common/images/icon.png',
+    v4Tag: '推荐',
+    v5Title: '正在加载推荐',
+    v5Stat: 'api.bilibili.com',
+    v5Bvid: '',
+    v5Cid: '',
+    v5Pic: '/common/images/icon.png',
+    v5Tag: '推荐',
+    v6Title: '正在加载推荐',
+    v6Stat: 'api.bilibili.com',
+    v6Bvid: '',
+    v6Cid: '',
+    v6Pic: '/common/images/icon.png',
+    v6Tag: '推荐',
+    v7Title: '正在加载推荐',
+    v7Stat: 'api.bilibili.com',
+    v7Bvid: '',
+    v7Cid: '',
+    v7Pic: '/common/images/icon.png',
+    v7Tag: '推荐',
+    v8Title: '正在加载推荐',
+    v8Stat: 'api.bilibili.com',
+    v8Bvid: '',
+    v8Cid: '',
+    v8Pic: '/common/images/icon.png',
+    v8Tag: '推荐',
+    v9Title: '正在加载推荐',
+    v9Stat: 'api.bilibili.com',
+    v9Bvid: '',
+    v9Cid: '',
+    v9Pic: '/common/images/icon.png',
+    v9Tag: '推荐',
+    v10Title: '正在加载推荐',
+    v10Stat: 'api.bilibili.com',
+    v10Bvid: '',
+    v10Cid: '',
+    v10Pic: '/common/images/icon.png',
+    v10Tag: '推荐',
+    v11Title: '正在加载推荐',
+    v11Stat: 'api.bilibili.com',
+    v11Bvid: '',
+    v11Cid: '',
+    v11Pic: '/common/images/icon.png',
+    v11Tag: '推荐',
+    v12Title: '正在加载推荐',
+    v12Stat: 'api.bilibili.com',
+    v12Bvid: '',
+    v12Cid: '',
+    v12Pic: '/common/images/icon.png',
+    v12Tag: '推荐',
+    v13Title: '正在加载推荐',
+    v13Stat: 'api.bilibili.com',
+    v13Bvid: '',
+    v13Cid: '',
+    v13Pic: '/common/images/icon.png',
+    v13Tag: '推荐',
+    v14Title: '正在加载推荐',
+    v14Stat: 'api.bilibili.com',
+    v14Bvid: '',
+    v14Cid: '',
+    v14Pic: '/common/images/icon.png',
+    v14Tag: '推荐',
+    v15Title: '正在加载推荐',
+    v15Stat: 'api.bilibili.com',
+    v15Bvid: '',
+    v15Cid: '',
+    v15Pic: '/common/images/icon.png',
+    v15Tag: '推荐',
+    v16Title: '正在加载推荐',
+    v16Stat: 'api.bilibili.com',
+    v16Bvid: '',
+    v16Cid: '',
+    v16Pic: '/common/images/icon.png',
+    v16Tag: '推荐',
+    v17Title: '正在加载推荐',
+    v17Stat: 'api.bilibili.com',
+    v17Bvid: '',
+    v17Cid: '',
+    v17Pic: '/common/images/icon.png',
+    v17Tag: '推荐',
+    v18Title: '正在加载推荐',
+    v18Stat: 'api.bilibili.com',
+    v18Bvid: '',
+    v18Cid: '',
+    v18Pic: '/common/images/icon.png',
+    v18Tag: '推荐',
+    v19Title: '正在加载推荐',
+    v19Stat: 'api.bilibili.com',
+    v19Bvid: '',
+    v19Cid: '',
+    v19Pic: '/common/images/icon.png',
+    v19Tag: '推荐',
+    v20Title: '正在加载推荐',
+    v20Stat: 'api.bilibili.com',
+    v20Bvid: '',
+    v20Cid: '',
+    v20Pic: '/common/images/icon.png',
+    v20Tag: '推荐',
+    sectionTitle: '首页推荐',
+    showRecList: true,
+    showLiveList: false,
+    showHotList: false,
+    tabLiveClass: '',
+    tabRecClass: 'active-text',
+    tabHotClass: '',
+    tabLiveBarClass: 'hide-bar',
+    tabRecBarClass: '',
+    tabHotBarClass: 'hide-bar',
+    h1: '', h1Show: false,
+    h2: '', h2Show: false,
+    h3: '', h3Show: false,
+    h4: '', h4Show: false,
+    h5: '', h5Show: false,
+    h6: '', h6Show: false,
+    h7: '', h7Show: false,
+    h8: '', h8Show: false,
+    h9: '', h9Show: false,
+    h10: '', h10Show: false,
+    l1Title: '正在加载直播',
+    l1RoomId: '',
+    l1Pic: '/common/images/icon.png',
+    l1Online: '0',
+    l1Uname: '',
+    l1Face: '/common/images/icon.png',
+    l1Uid: '',
+    l2Title: '正在加载直播',
+    l2RoomId: '',
+    l2Pic: '/common/images/icon.png',
+    l2Online: '0',
+    l2Uname: '',
+    l2Face: '/common/images/icon.png',
+    l2Uid: '',
+    l3Title: '正在加载直播',
+    l3RoomId: '',
+    l3Pic: '/common/images/icon.png',
+    l3Online: '0',
+    l3Uname: '',
+    l3Face: '/common/images/icon.png',
+    l3Uid: '',
+    l4Title: '正在加载直播',
+    l4RoomId: '',
+    l4Pic: '/common/images/icon.png',
+    l4Online: '0',
+    l4Uname: '',
+    l4Face: '/common/images/icon.png',
+    l4Uid: '',
+    l5Title: '正在加载直播',
+    l5RoomId: '',
+    l5Pic: '/common/images/icon.png',
+    l5Online: '0',
+    l5Uname: '',
+    l5Face: '/common/images/icon.png',
+    l5Uid: '',
+    l6Title: '正在加载直播',
+    l6RoomId: '',
+    l6Pic: '/common/images/icon.png',
+    l6Online: '0',
+    l6Uname: '',
+    l6Face: '/common/images/icon.png',
+    l6Uid: '',
+    l7Title: '正在加载直播',
+    l7RoomId: '',
+    l7Pic: '/common/images/icon.png',
+    l7Online: '0',
+    l7Uname: '',
+    l7Face: '/common/images/icon.png',
+    l7Uid: '',
+    l8Title: '正在加载直播',
+    l8RoomId: '',
+    l8Pic: '/common/images/icon.png',
+    l8Online: '0',
+    l8Uname: '',
+    l8Face: '/common/images/icon.png',
+    l8Uid: '',
+    l9Title: '正在加载直播',
+    l9RoomId: '',
+    l9Pic: '/common/images/icon.png',
+    l9Online: '0',
+    l9Uname: '',
+    l9Face: '/common/images/icon.png',
+    l9Uid: '',
+    l10Title: '正在加载直播',
+    l10RoomId: '',
+    l10Pic: '/common/images/icon.png',
+    l10Online: '0',
+    l10Uname: '',
+    l10Face: '/common/images/icon.png',
+    l10Uid: '',
+    goLiveUpBlocked: false,
+    liveRetryCount: 0,
+    liveLoadError: false,
+    hotLoading: false
+  },
+  onInit() {
+    this.startSpinner()
+    this.checkLoginAndLoad()
+    this.loadUserAvatar()
+    this.loadLiveList()
+  },
+  startSpinner() {
+    var self = this
+    this.isLoading = true
+    this.showError = false
+    if (this.spinTimer) {
+      clearInterval(this.spinTimer)
+    }
+    this.spinTimer = setInterval(function() {
+      self.spinDeg = self.spinDeg + 45
+    }, 100)
+  },
+  stopSpinner() {
+    this.isLoading = false
+    if (this.spinTimer) {
+      clearInterval(this.spinTimer)
+      this.spinTimer = null
+    }
+  },
+  switchTab(tab) {
+    if (tab === 'live') {
+      this.showLiveList = true
+      this.showRecList = false
+      this.showHotList = false
+      this.tabLiveClass = 'active-text'
+      this.tabRecClass = ''
+      this.tabHotClass = ''
+      this.tabLiveBarClass = ''
+      this.tabRecBarClass = 'hide-bar'
+      this.tabHotBarClass = 'hide-bar'
+      this.sectionTitle = '直播推荐'
+      this.loadTip = '直播中'
+      if (!this.l1RoomId) {
+        this.loadLiveList()
+      }
+    } else if (tab === 'hot') {
+      this.showLiveList = false
+      this.showRecList = false
+      this.showHotList = true
+      this.tabLiveClass = ''
+      this.tabRecClass = ''
+      this.tabHotClass = 'active-text'
+      this.tabLiveBarClass = 'hide-bar'
+      this.tabRecBarClass = 'hide-bar'
+      this.tabHotBarClass = ''
+      this.sectionTitle = 'B站热搜'
+      this.loadTip = '点击词搜索'
+      this.loadHotSearch()
+    } else {
+      this.showLiveList = false
+      this.showRecList = true
+      this.showHotList = false
+      this.tabLiveClass = ''
+      this.tabRecClass = 'active-text'
+      this.tabHotClass = ''
+      this.tabLiveBarClass = 'hide-bar'
+      this.tabRecBarClass = ''
+      this.tabHotBarClass = 'hide-bar'
+      this.sectionTitle = '首页推荐'
+      this.loadTip = this.logged ? '个性化' : '热门'
+    }
+  },
+  formatOnline(num) {
+    if (!num) return '0'
+    if (num > 10000) return (num / 10000).toFixed(1) + '万'
+    return '' + num
+  },
+  setLiveItem(index, item) {
+    if (!item) return
+    this['l' + index + 'Title'] = item.title || '直播间'
+    this['l' + index + 'RoomId'] = item.roomid ? '' + item.roomid : ''
+    this['l' + index + 'Uname'] = item.uname || '主播'
+    this['l' + index + 'Online'] = this.formatOnline(item.online || 0) + '人气'
+    var pic = item.cover || item.user_cover || '/common/images/icon.png'
+    if (pic.indexOf('http') !== 0 && pic.indexOf('//') === 0) {
+      pic = 'https:' + pic
+    }
+    if (pic.indexOf('hdslb.com') > 0 || pic.indexOf('biliimg.com') > 0) {
+      pic = pic + '@312w_176h_1e_1c.jpg'
+    }
+    this['l' + index + 'Pic'] = pic
+    var face = item.face || item.uface || item.user_cover || '/common/images/icon.png'
+    if (face.indexOf('http') !== 0 && face.indexOf('//') === 0) {
+      face = 'https:' + face
+    }
+    if (face.indexOf('hdslb.com') > 0 || face.indexOf('biliimg.com') > 0) {
+      face = face + '@40w_40h_1e_1c.jpg'
+    }
+    this['l' + index + 'Face'] = face
+    this['l' + index + 'Uid'] = item.uid ? '' + item.uid : ''
+  },
+  loadLiveList() {
+    var self = this
+    this.liveLoadError = false
+    this.loadTip = '直播加载中...'
+    var urls = [
+      'https://api.live.bilibili.com/room/v2/Area/getRoomList?parent_area_id=0&area_id=0&sort_type=online&page=1&page_size=10',
+      'https://api.live.bilibili.com/room/v1/Area/getRoomList?parent_area_id=0&area_id=0&sort_type=online&page=1&page_size=10',
+      'https://api.live.bilibili.com/xlive/web-interface/v1/second/getList?platform=web&parent_area_id=0&area_id=0&page=1',
+      'https://api.live.bilibili.com/room/v1/AppIndex/getAllList?platform=ios&device=phone'
+    ]
+    var urlIndex = this.liveRetryCount
+    if (urlIndex >= urls.length) {
+      urlIndex = urls.length - 1
+    }
+    var url = urls[urlIndex]
+    fetch.fetch({
+      url: url,
+      header: { 'User-Agent': 'Mozilla/5.0 BiliApp/7.0.0', 'Referer': 'https://live.bilibili.com/' },
+      responseType: 'json',
+      timeout: 30000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') { data = JSON.parse(data) }
+        var list = []
+        if (data && data.data && data.data.list) {
+          list = data.data.list
+        } else if (data && data.data && data.data.rooms) {
+          list = data.data.rooms
+        } else if (data && data.data && data.data.room_list) {
+          list = data.data.room_list
+        } else if (data && data.data && data.data.module_list) {
+          var modules = data.data.module_list
+          var m = 0
+          for (m = 0; m < modules.length; m++) {
+            if (modules[m] && modules[m].list && modules[m].list.length > 0) {
+              list = list.concat(modules[m].list)
+            }
+          }
+        } else if (data && data.data) {
+          var keys = Object.keys(data.data)
+          if (keys.length > 0 && data.data[keys[0]] && data.data[keys[0]].list) {
+            list = data.data[keys[0]].list
+          }
+        }
+        if (list && list.length > 0) {
+          self.liveRetryCount = 0
+          self.liveLoadError = false
+          self.loadTip = '直播中'
+          for (var i = 1; i <= 10; i++) {
+            self.setLiveItem(i, list[i - 1])
+          }
+        } else {
+          self.onLiveFail()
+        }
+      },
+      fail: function() {
+        self.onLiveFail()
+      }
+    })
+  },
+  onLiveFail() {
+    this.liveRetryCount = this.liveRetryCount + 1
+    if (this.liveRetryCount <= 4) {
+      this.loadTip = '直播重试(' + this.liveRetryCount + ')...'
+      var self = this
+      setTimeout(function() {
+        self.loadLiveList()
+      }, 3000)
+    } else {
+      this.liveLoadError = true
+      this.loadTip = '点击刷新'
+    }
+  },
+  reloadLiveList() {
+    if (!this.showLiveList) return
+    this.liveRetryCount = 0
+    this.liveLoadError = false
+    for (var i = 1; i <= 10; i++) {
+      this['l' + i + 'Title'] = '正在加载直播'
+      this['l' + i + 'RoomId'] = ''
+      this['l' + i + 'Pic'] = '/common/images/icon.png'
+      this['l' + i + 'Online'] = '0'
+      this['l' + i + 'Uname'] = ''
+    }
+    this.loadLiveList()
+  },
+  onTipClick() {
+    if (this.showLiveList) {
+      this.reloadLiveList()
+    } else if (this.showHotList) {
+      this.refresh()
+    }
+  },
+  openLive(index) {
+    router.push({ uri: '/live', params: { roomId: this['l' + index + 'RoomId'], title: this['l' + index + 'Title'], uname: this['l' + index + 'Uname'], pic: this['l' + index + 'Pic'] } })
+  },
+  openLive1() { this.openLive(1) },
+  openLive2() { this.openLive(2) },
+  openLive3() { this.openLive(3) },
+  openLive4() { this.openLive(4) },
+  openLive5() { this.openLive(5) },
+  openLive6() { this.openLive(6) },
+  openLive7() { this.openLive(7) },
+  openLive8() { this.openLive(8) },
+  openLive9() { this.openLive(9) },
+  openLive10() { this.openLive(10) },
+  loadUserAvatar() {
+    var self = this
+    storage.get({
+      key: 'bili_avatar_cached',
+      success: function(data) {
+        if (data && data.length > 5) {
+          self.userAvatar = data
+        }
+        self.fetchAvatarFromV2()
+      },
+      fail: function() {
+        self.fetchAvatarFromV2()
+      }
+    })
+  },
+  fetchAvatarFromV2() {
+    var self = this
+    storage.get({
+      key: 'bili_cookie',
+      success: function(cookie) {
+        if (!cookie || cookie.length < 10) {
+          return
+        }
+        fetch.fetch({
+          url: 'https://app.bilibili.com/x/v2/account/myinfo',
+          header: {
+            'Cookie': cookie,
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36'
+          },
+          responseType: 'json',
+          timeout: 15000,
+          success: function(res) {
+            var data = res.data
+            if (typeof data === 'string') {
+              data = JSON.parse(data)
+            }
+            if (data && data.code === 0 && data.data && data.data.face) {
+              var face = data.data.face
+              if (face.indexOf('http') !== 0 && face.indexOf('//') === 0) {
+                face = 'https:' + face
+              }
+              if (face.indexOf('@') > 0) {
+                face = face.split('@')[0]
+              }
+              if (face.indexOf('hdslb.com') > 0 || face.indexOf('biliimg.com') > 0) {
+                face = face + '@40w_40h_1e_1c.jpg'
+              }
+              self.userAvatar = face
+              storage.set({ key: 'bili_avatar_cached', value: face })
+            }
+          },
+          fail: function() {
+            self.fetchAvatarFallback(cookie)
+          }
+        })
+      },
+      fail: function() {}
+    })
+  },
+  fetchAvatarFallback(cookie) {
+    var self = this
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/nav',
+      header: {
+        'Cookie': cookie,
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36'
+      },
+      responseType: 'json',
+      timeout: 8000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.data && data.data.isLogin && data.data.face) {
+          var face = data.data.face
+          if (face.indexOf('http') !== 0 && face.indexOf('//') === 0) {
+            face = 'https:' + face
+          }
+          if (face.indexOf('@') > 0) {
+            face = face.split('@')[0]
+          }
+          if (face.indexOf('hdslb.com') > 0 || face.indexOf('biliimg.com') > 0) {
+            face = face + '@40w_40h_1e_1c.jpg'
+          }
+          self.userAvatar = face
+          storage.set({ key: 'bili_avatar_cached', value: face })
+        }
+      },
+      fail: function() {}
+    })
+  },
+  checkLoginAndLoad() {
+    var self = this
+    this.showError = false
+    storage.get({
+      key: 'bili_cookie',
+      success: function(data) {
+        self.cookie = data || ''
+        self.logged = self.cookie.length > 10
+        storage.get({
+          key: 'bili_recmode',
+          success: function(mode) {
+            if (mode === 'popular') {
+              self.logged = false
+              self.loadTip = '热门加载中'
+            } else if (mode === 'personal') {
+              if (!self.logged) {
+                self.loadTip = '未登录，加载热门'
+                self.logged = false
+              } else {
+                self.loadTip = '个性化加载中'
+              }
+            } else {
+              self.loadTip = self.logged ? '个性化加载中' : '热门加载中'
+            }
+            self.loadPopular()
+          },
+          fail: function() {
+            self.loadTip = self.logged ? '个性化加载中' : '热门加载中'
+            self.loadPopular()
+          }
+        })
+      },
+      fail: function() {
+        self.logged = false
+        self.loadTip = '热门加载中'
+        self.loadPopular()
+      }
+    })
+  },
+  refresh() {
+    if (this.showLiveList) {
+      this.loadTip = '刷新中'
+      this.liveRetryCount = 0
+      this.liveLoadError = false
+      this.loadLiveList()
+      return
+    }
+    if (this.showHotList) {
+      this.loadTip = '刷新中...'
+      this.loadHotSearch(true)
+      return
+    }
+    this.loadTip = '刷新中'
+    this.showError = false
+    this.startSpinner()
+    this.refreshPage = this.refreshPage + 1
+    if (this.refreshPage > 5) {
+      this.refreshPage = 1
+    }
+    this.loadPopular()
+  },
+  retryLoad() {
+    this.showError = false
+    this.loadTip = '正在重试'
+    this.startSpinner()
+    this.checkLoginAndLoad()
+  },
+  formatStat(item) {
+    var view = item.stat && item.stat.view ? item.stat.view : 0
+    if (view > 10000) {
+      return (view / 10000).toFixed(1) + '万播放'
+    }
+    return view + '播放'
+  },
+  setItem(index, item) {
+    if (!item) {
+      return
+    }
+    this['v' + index + 'Title'] = item.title || 'B站推荐视频'
+    this['v' + index + 'Stat'] = this.formatStat(item)
+    this['v' + index + 'Bvid'] = item.bvid || ''
+    this['v' + index + 'Cid'] = item.cid ? '' + item.cid : ''
+    this['v' + index + 'Tag'] = this['v' + index + 'Stat']
+    var lowPic = item.pic || '/common/images/icon.png'
+    if (lowPic.indexOf('hdslb.com') > 0 || lowPic.indexOf('biliimg.com') > 0) {
+      lowPic = lowPic + '@336w_210h_1e_1c.jpg'
+    }
+    this['v' + index + 'Pic'] = lowPic
+  },
+  applyList(list) {
+    var i = 0
+    this.sectionTitle = '首页推荐'
+    this.stopPicLoader()
+    this.stopFramePreloader()
+    this.pendingPics = []
+    for (i = 1; i <= 20; i++) {
+      this.setItem(i, list[i - 1])
+    }
+    this.loadedCount = list.length
+    if (list.length >= 3) {
+      this.stopSpinner()
+    }
+    this.startPicLoader()
+    this.buildPreloadFrames(list)
+    this.startFramePreloader()
+  },
+  cleanImageUrl(url) {
+    if (!url) {
+      return ''
+    }
+    if (url.indexOf('http') !== 0 && url.indexOf('//') === 0) {
+      url = 'https:' + url
+    }
+    if (url.indexOf('@') > 0) {
+      url = url.split('@')[0]
+    }
+    return url
+  },
+  buildFrameUrls(pic) {
+    var cover = this.cleanImageUrl(pic)
+    var frames = []
+    if (!cover) {
+      return frames
+    }
+    frames.push(cover)
+    if (cover.indexOf('hdslb.com') > 0 || cover.indexOf('biliimg.com') > 0) {
+      frames.push(cover + '@312w_210h_1e_1c.jpg')
+      frames.push(cover + '@208w_140h_1e_1c.jpg')
+    }
+    return frames
+  },
+  buildPreloadFrames(list) {
+    var frames = []
+    var i = 0
+    var max = list.length > 4 ? 4 : list.length
+    for (i = 0; i < max; i++) {
+      if (list[i] && list[i].pic) {
+        frames = frames.concat(this.buildFrameUrls(list[i].pic))
+      }
+    }
+    this.preloadFrames = frames
+    this.preloadIndex = 0
+  },
+  startFramePreloader() {
+    var self = this
+    if (!this.preloadFrames || this.preloadFrames.length === 0) {
+      return
+    }
+    this.preloadFrame = this.preloadFrames[0]
+    this.preloadTimer = setInterval(function() {
+      self.preloadIndex = self.preloadIndex + 1
+      if (self.preloadIndex >= self.preloadFrames.length) {
+        self.stopFramePreloader()
+        self.loadTip = self.logged ? '个性化 · 帧已预载' : '热门 · 帧已预载'
+        return
+      }
+      self.preloadFrame = self.preloadFrames[self.preloadIndex]
+    }, 300)
+  },
+  stopFramePreloader() {
+    if (this.preloadTimer) {
+      clearInterval(this.preloadTimer)
+      this.preloadTimer = null
+    }
+  },
+  startPicLoader() {
+    var self = this
+    this.picLoadIndex = 0
+    if (this.picTimer) {
+      clearInterval(this.picTimer)
+    }
+    this.picTimer = setInterval(function() {
+      if (self.picLoadIndex >= self.pendingPics.length) {
+        self.stopPicLoader()
+        return
+      }
+      var item = self.pendingPics[self.picLoadIndex]
+      self['v' + item.index + 'Pic'] = item.pic
+      self.picLoadIndex = self.picLoadIndex + 1
+    }, 80)
+  },
+  stopPicLoader() {
+    if (this.picTimer) {
+      clearInterval(this.picTimer)
+      this.picTimer = null
+    }
+  },
+  loadPopular() {
+    var self = this
+    this.showError = false
+    var url = this.logged ? 'https://api.bilibili.com/x/web-interface/index/top/feed/rcmd?ps=20&fresh_type=4&fresh_idx=' + this.refreshPage : 'https://api.bilibili.com/x/web-interface/popular?ps=20&pn=' + this.refreshPage
+    fetch.fetch({
+      url: url,
+      header: this.logged ? {
+        'Cookie': this.cookie,
+        'User-Agent': 'Mozilla/5.0'
+      } : {
+        'User-Agent': 'Mozilla/5.0'
+      },
+      responseType: 'json',
+      timeout: 12000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        var list = []
+        if (data && data.data && data.data.item) {
+          list = data.data.item
+        } else if (data && data.data && data.data.list) {
+          list = data.data.list
+        }
+        if (list && list.length > 0) {
+          self.applyList(list)
+          self.loadTip = self.logged ? '个性化' : '热门'
+          self.sectionTitle = '首页推荐'
+        } else {
+          if (self.logged) {
+            self.logged = false
+            self.loadTip = '个性化失败，切热门'
+            self.loadPopular()
+          } else {
+            self.loadTip = '无数据'
+            self.isLoading = false
+            self.showError = true
+            if (self.spinTimer) {
+              clearInterval(self.spinTimer)
+              self.spinTimer = null
+            }
+          }
+        }
+      },
+      fail: function() {
+        if (self.logged) {
+          self.logged = false
+          self.loadTip = '个性化失败，切热门'
+          self.loadPopular()
+        } else {
+          self.loadTip = '网络失败'
+          self.isLoading = false
+          self.showError = true
+          if (self.spinTimer) {
+            clearInterval(self.spinTimer)
+            self.spinTimer = null
+          }
+        }
+      }
+    })
+  },
+  goSearch() {
+    router.push({ uri: '/search' })
+  },
+  goMy() {
+    router.push({ uri: '/my' })
+  },
+  goMessages() {
+    router.push({ uri: '/messages' })
+  },
+  loadHotSearch(force) {
+    var self = this
+    if (!force && this.h1Show) { return }
+    if (this.hotLoading) { return }
+    this.hotLoading = true
+    if (!force) {
+      this.loadTip = '加载中...'
+    }
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/search/square?limit=10',
+      header: { 'User-Agent': 'Mozilla/5.0' },
+      responseType: 'json',
+      success: function(res) {
+        self.hotLoading = false
+        var data = res.data
+        if (typeof data === 'string') { data = JSON.parse(data) }
+        var list = []
+        if (data && data.data && data.data.trending && data.data.trending.list) {
+          list = data.data.trending.list
+        } else if (data && data.data && data.data.list) {
+          list = data.data.list
+        }
+        if (list && list.length > 0) {
+          var max = list.length > 10 ? 10 : list.length
+          var i = 0
+          for (i = 0; i < max; i++) {
+            var kw = list[i].keyword || list[i].show_name || list[i].name || list[i].title || ''
+            self['h' + (i + 1)] = kw
+            self['h' + (i + 1) + 'Show'] = true
+          }
+          self.loadTip = '点击词搜索'
+        } else {
+          self.useHotFallback()
+        }
+      },
+      fail: function() {
+        self.hotLoading = false
+        self.useHotFallback()
+      }
+    })
+  },
+  useHotFallback() {
+    var fallback = ['热门动画', '科技数码', '音乐现场', '游戏实况', '鬼畜', '影视剪辑', '美食', '学习', '舞蹈', '生活日常']
+    var i = 0
+    for (i = 0; i < 10; i++) {
+      this['h' + (i + 1)] = fallback[i]
+      this['h' + (i + 1) + 'Show'] = true
+    }
+    this.loadTip = '兜底热搜'
+  },
+  openHot(n) {
+    var kw = this['h' + n]
+    if (kw && kw.length > 0) {
+      router.push({ uri: '/search', params: { keyword: kw } })
+    }
+  },
+  openHot1() { this.openHot(1) },
+  openHot2() { this.openHot(2) },
+  openHot3() { this.openHot(3) },
+  openHot4() { this.openHot(4) },
+  openHot5() { this.openHot(5) },
+  openHot6() { this.openHot(6) },
+  openHot7() { this.openHot(7) },
+  openHot8() { this.openHot(8) },
+  openHot9() { this.openHot(9) },
+  openHot10() { this.openHot(10) },
+  goSettings() {
+    router.push({ uri: '/settings' })
+  },
+  doExit() {
+    router.back()
+  },
+  openVideo(index) {
+    router.push({ uri: '/video', params: { title: this['v' + index + 'Title'], bvid: this['v' + index + 'Bvid'], cid: this['v' + index + 'Cid'], stat: this['v' + index + 'Stat'], pic: this['v' + index + 'Pic'] } })
+  },
+  openVideo1() {
+    this.openVideo(1)
+  },
+  openVideo2() {
+    this.openVideo(2)
+  },
+  openVideo3() {
+    this.openVideo(3)
+  },
+  openVideo4() {
+    this.openVideo(4)
+  },
+  openVideo5() {
+    this.openVideo(5)
+  },
+  openVideo6() {
+    this.openVideo(6)
+  },
+  openVideo7() {
+    this.openVideo(7)
+  },
+  openVideo8() {
+    this.openVideo(8)
+  },
+  openVideo9() {
+    this.openVideo(9)
+  },
+  openVideo10() {
+    this.openVideo(10)
+  },
+  openVideo11() {
+    this.openVideo(11)
+  },
+  openVideo12() {
+    this.openVideo(12)
+  },
+  openVideo13() {
+    this.openVideo(13)
+  },
+  openVideo14() {
+    this.openVideo(14)
+  },
+  openVideo15() {
+    this.openVideo(15)
+  },
+  openVideo16() {
+    this.openVideo(16)
+  },
+  openVideo17() {
+    this.openVideo(17)
+  },
+  openVideo18() {
+    this.openVideo(18)
+  },
+  openVideo19() {
+    this.openVideo(19)
+  },
+  openVideo20() {
+    this.openVideo(20)
+  },
+  onDestroy() {
+    this.stopPicLoader()
+    this.stopFramePreloader()
+    this.stopSpinner()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  position: relative;
+  background-color: #000000;
+  background-image: url(/common/images/bg_pink.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+
+}
+.bili-top {
+  width: 320px;
+  height: 58px;
+  flex-direction: row;
+  align-items: center;
+  margin-top: 2px;
+}
+.bili-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+.bili-avatar-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
+}
+.bili-login-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
+  background-color: #fb7299;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+.bili-login-text {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+}
+.bili-search-bar {
+  flex: 1;
+  height: 48px;
+  margin-left: 8px;
+  border-radius: 24px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.18);
+  flex-direction: row;
+  align-items: center;
+  padding: 0 14px;
+}
+.bili-search-icon-img {
+  width: 22px;
+  height: 22px;
+}
+.bili-search-text {
+  color: rgba(255,255,255,0.6);
+  font-size: 16px;
+  margin-left: 8px;
+}
+.bili-msg-btn {
+  width: 48px;
+  height: 48px;
+  margin-left: 6px;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+.bili-msg-icon-img {
+  width: 28px;
+  height: 28px;
+}
+.nav-glass {
+  width: 320px;
+  height: 84px;
+  margin-top: 4px;
+  border-radius: 20px;
+  background-color: rgba(255,255,255,0.08);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.14);
+  flex-direction: column;
+  padding: 4px 6px;
+  flex-shrink: 0;
+}
+.bili-tabs {
+  width: 308px;
+  height: 46px;
+  flex-direction: row;
+  align-items: center;
+  flex-shrink: 0;
+}
+.bili-tab {
+  flex: 1;
+  height: 46px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.bili-tab-text {
+  color: rgba(255,255,255,0.5);
+  font-size: 22px;
+  font-weight: bold;
+}
+.active-text {
+  color: #fb7299;
+}
+.bili-tab-bar {
+  width: 24px;
+  height: 3px;
+  margin-top: 3px;
+  border-radius: 2px;
+  background-color: #fb7299;
+}
+.hide-bar {
+  opacity: 0;
+}
+.section {
+  width: 308px;
+  height: 28px;
+  margin-top: 2px;
+  position: relative;
+  flex-shrink: 0;
+}
+.section-title {
+  position: absolute;
+  left: 4px;
+  top: 0;
+  width: 160px;
+  height: 28px;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: bold;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.section-more {
+  position: absolute;
+  right: 4px;
+  top: 0;
+  width: 136px;
+  height: 28px;
+  color: #fb7299;
+  font-size: 13px;
+  text-align: right;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.live-refresh-hint {
+  color: #ffeb3b;
+  font-size: 12px;
+  font-weight: bold;
+}
+.list {
+  width: 320px;
+  flex-direction: column;
+  align-items: center;
+}
+.video-card {
+  width: 316px;
+  margin-top: 10px;
+  border-radius: 16px;
+  background-color: rgba(255,255,255,0.08);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  flex-direction: column;
+  padding: 6px;
+}
+.cover {
+  width: 304px;
+  height: 162px;
+  border-radius: 12px;
+  background-color: #fb7299;
+  justify-content: flex-end;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+.cover-img {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 304px;
+  height: 162px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+.cover-tag {
+  color: #ffffff;
+  font-size: 13px;
+  background-color: rgba(0,0,0,0.48);
+  border-radius: 8px;
+  padding: 2px 8px;
+}
+.video-title {
+  width: 300px;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 8px;
+  padding: 0 2px;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.live-up {
+  width: 300px;
+  color: rgba(255,255,255,0.5);
+  font-size: 10px;
+  margin-top: 2px;
+  padding: 0 2px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.live-up-row {
+  width: 300px;
+  flex-direction: row;
+  align-items: center;
+  margin-top: 6px;
+  padding: 0 2px;
+}
+.live-up-face {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  margin-right: 8px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.live-up-name {
+  color: rgba(255,255,255,0.6);
+  font-size: 13px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.error-hint {
+  width: 320px;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+.error-hint-text {
+  color: rgba(255,255,255,0.6);
+  font-size: 14px;
+}
+.error-hint-btns {
+  width: 220px;
+  flex-direction: row;
+  justify-content: center;
+  margin-top: 12px;
+}
+.hint-btn {
+  width: 90px;
+  height: 36px;
+  margin: 0 6px;
+  border-radius: 18px;
+  background-color: rgba(255,255,255,0.1);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+}
+.hint-btn.retry {
+  background-color: #fb7299;
+}
+.preload-img {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.hot-item {
+  width: 316px;
+  height: 42px;
+  margin-top: 6px;
+  border-radius: 14px;
+  background-color: rgba(255,255,255,0.08);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  flex-direction: row;
+  align-items: center;
+  padding: 0 10px;
+}
+.hot-rank {
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  background-color: rgba(251,114,153,0.4);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+  flex-shrink: 0;
+}
+.hot-rank.gold {
+  background-color: rgba(255,215,0,0.5);
+}
+.hot-rank.silver {
+  background-color: rgba(192,192,192,0.5);
+}
+.hot-rank.bronze {
+  background-color: rgba(205,127,50,0.5);
+}
+.hot-word {
+  flex: 1;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+  margin-left: 10px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.hot-list {
+  min-height: 480px;
+}
+</style>

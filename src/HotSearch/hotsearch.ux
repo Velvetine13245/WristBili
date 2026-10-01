@@ -1,0 +1,271 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back" onclick="back"><text class="back-text">‹</text></div>
+      <text class="title">热搜榜</text>
+    </div>
+    <text class="status">{{status}}</text>
+
+    <div class="hot-card" onclick="openHot1"><text class="rank-gold">1</text><text class="hot-title-gold">{{h1}}</text></div>
+    <div class="hot-card" onclick="openHot2"><text class="rank-silver">2</text><text class="hot-title-silver">{{h2}}</text></div>
+    <div class="hot-card" onclick="openHot3"><text class="rank-bronze">3</text><text class="hot-title-bronze">{{h3}}</text></div>
+    <div class="hot-card" onclick="openHot4"><text class="rank">4</text><text class="hot-title">{{h4}}</text></div>
+    <div class="hot-card" onclick="openHot5"><text class="rank">5</text><text class="hot-title">{{h5}}</text></div>
+    <div class="hot-card" onclick="openHot6"><text class="rank">6</text><text class="hot-title">{{h6}}</text></div>
+    <div class="hot-card" onclick="openHot7"><text class="rank">7</text><text class="hot-title">{{h7}}</text></div>
+    <div class="hot-card" onclick="openHot8"><text class="rank">8</text><text class="hot-title">{{h8}}</text></div>
+
+    <div class="refresh" onclick="loadHot"><text class="refresh-text">刷新热搜榜</text></div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetch from '@system.fetch'
+import storage from '@system.storage'
+
+export default {
+  private: {
+    status: '正在加载 B 站热搜...',
+    h1: '加载中',
+    h2: '加载中',
+    h3: '加载中',
+    h4: '加载中',
+    h5: '加载中',
+    h6: '加载中',
+    h7: '加载中',
+    h8: '加载中',
+  },
+  onInit() {
+    this.loadHot()
+  },
+  onShow() {
+  },
+  loadHot() {
+    var self = this
+    this.status = '正在加载 B 站热搜...'
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/search/square?limit=8',
+      header: {
+        'User-Agent': 'Mozilla/5.0'
+      },
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        var list = []
+        if (data && data.data && data.data.trending && data.data.trending.list) {
+          list = data.data.trending.list
+        } else if (data && data.data && data.data.list) {
+          list = data.data.list
+        }
+        if (list && list.length > 0) {
+          self.applyList(list)
+        } else {
+          self.useFallback()
+        }
+      },
+      fail: function() {
+        self.useFallback()
+      }
+    })
+  },
+  getKeyword(item) {
+    return item.keyword || item.show_name || item.name || item.title || 'B站热搜'
+  },
+  applyList(list) {
+    var i = 0
+    for (i = 1; i <= 8; i++) {
+      if (list[i - 1]) {
+        this['h' + i] = this.getKeyword(list[i - 1])
+      }
+    }
+    this.status = '点击热搜词进入搜索'
+  },
+  useFallback() {
+    this.h1 = '热门动画'
+    this.h2 = '科技数码'
+    this.h3 = '音乐现场'
+    this.h4 = '游戏实况'
+    this.h5 = '鬼畜'
+    this.h6 = '影视剪辑'
+    this.h7 = '美食'
+    this.h8 = '学习'
+    this.status = '热搜接口失败，显示兜底词'
+  },
+  openHot(n) {
+    router.push({ uri: '/search', params: { keyword: this['h' + n] } })
+  },
+  openHot1() { this.openHot(1) },
+  openHot2() { this.openHot(2) },
+  openHot3() { this.openHot(3) },
+  openHot4() { this.openHot(4) },
+  openHot5() { this.openHot(5) },
+  openHot6() { this.openHot(6) },
+  openHot7() { this.openHot(7) },
+  openHot8() { this.openHot(8) },
+
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_blue.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 8px;
+
+}
+.header {
+  width: 318px;
+  height: 42px;
+  flex-direction: row;
+  align-items: center;
+}
+.back {
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+  align-items: center;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 34px;
+}
+.title {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.status {
+  width: 310px;
+  color: #fb7299;
+  font-size: 11px;
+  margin-top: 4px;
+  text-align: center;
+}
+.hot-card {
+  width: 310px;
+  height: 42px;
+  margin-top: 7px;
+  border-radius: 14px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  flex-direction: row;
+  align-items: center;
+  padding: 8px;
+}
+.rank {
+  width: 30px;
+  height: 26px;
+  border-radius: 13px;
+  background-color: rgba(251,114,153,0.5);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+}
+.rank-gold {
+  width: 30px;
+  height: 26px;
+  border-radius: 13px;
+  background-color: rgba(255,215,0,0.5);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+}
+.rank-silver {
+  width: 30px;
+  height: 26px;
+  border-radius: 13px;
+  background-color: rgba(192,192,192,0.5);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+}
+.rank-bronze {
+  width: 30px;
+  height: 26px;
+  border-radius: 13px;
+  background-color: rgba(205,127,50,0.5);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+}
+.hot-title {
+  width: 258px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+  margin-left: 10px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.hot-title-gold {
+  width: 258px;
+  color: #B8860B;
+  font-size: 14px;
+  font-weight: bold;
+  margin-left: 10px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.hot-title-silver {
+  width: 258px;
+  color: #708090;
+  font-size: 14px;
+  font-weight: bold;
+  margin-left: 10px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.hot-title-bronze {
+  width: 258px;
+  color: #8B4513;
+  font-size: 14px;
+  font-weight: bold;
+  margin-left: 10px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.refresh {
+  width: 220px;
+  height: 34px;
+  margin-top: 12px;
+  border-radius: 17px;
+  background-color: rgba(251,114,153,0.5);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.1);
+  justify-content: center;
+  align-items: center;
+}
+.refresh-text {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+</style>

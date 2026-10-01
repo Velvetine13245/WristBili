@@ -1,0 +1,277 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <text class="back-text" onclick="back">⇦ 网桥</text>
+    </div>
+
+    <div class="status-card">
+      <div class="status-icon-row">
+        <div class="status-dot {{statusDotClass}}"></div>
+        <text class="status-title">{{statusText}}</text>
+      </div>
+      <text class="status-desc">{{statusDesc}}</text>
+    </div>
+
+    <div class="setting-card" onclick="toggleBridge">
+      <text class="setting-title">网桥模式</text>
+      <text class="setting-value">{{bridgeToggleText}}</text>
+    </div>
+
+    <div class="caps-card" if="{{showCaps}}">
+      <text class="caps-title">协商能力</text>
+      <text class="caps-text">{{capsText}}</text>
+    </div>
+
+    <div class="info-card">
+      <text class="info-title">协议说明</text>
+      <text class="info-text">FetchBridge v3 协议</text>
+      <text class="info-text">通过 QAIC interconnect 通道代理 HTTP 请求至手机端网桥插件，支持分片传输与 ACK 流控。</text>
+      <text class="info-text">网桥未就绪时自动降级为直连 fetch。</text>
+    </div>
+
+    <div class="setting-card" onclick="testBridge" if="{{bridgeEnabled}}">
+      <text class="setting-title">测试连接</text>
+      <text class="setting-arrow">›</text>
+    </div>
+
+    <text class="status">{{status}}</text>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetchBridge from '../common/scripts/fetchbridge'
+
+export default {
+  private: {
+    statusText: '已关闭',
+    statusDesc: '网桥模式未开启',
+    statusDotClass: 'dot-off',
+    bridgeToggleText: '关',
+    bridgeEnabled: false,
+    showCaps: false,
+    capsText: '',
+    status: ''
+  },
+  onShow() {
+  },
+  onInit() {
+    var self = this
+    this.refreshStatus()
+    fetchBridge.onStatusChange(function(st) {
+      self.refreshStatus()
+    })
+  },
+  refreshStatus() {
+    var s = fetchBridge.getStatus()
+    this.bridgeEnabled = fetchBridge.getStatus() !== 'disabled'
+    if (s === 'disabled') {
+      this.statusText = '已关闭'
+      this.statusDesc = '网桥模式未开启，所有请求走直连'
+      this.statusDotClass = 'dot-off'
+      this.bridgeToggleText = '关'
+      this.showCaps = false
+    } else if (s === 'connecting') {
+      this.statusText = '连接中...'
+      this.statusDesc = '正在建立 interconnect 会话'
+      this.statusDotClass = 'dot-connecting'
+      this.bridgeToggleText = '开'
+      this.showCaps = false
+    } else if (s === 'handshaking') {
+      this.statusText = '握手协商中...'
+      this.statusDesc = '会话已建立，正在进行能力协商'
+      this.statusDotClass = 'dot-connecting'
+      this.bridgeToggleText = '开'
+      this.showCaps = false
+    } else if (s === 'ready') {
+      this.statusText = '已就绪'
+      this.statusDesc = '网桥连接正常，请求将通过网桥代理'
+      this.statusDotClass = 'dot-on'
+      this.bridgeToggleText = '开'
+      this.showCaps = true
+      this.capsText = fetchBridge.getNegotiatedText()
+    }
+  },
+  toggleBridge() {
+    fetchBridge.toggle()
+    var self = this
+    setTimeout(function() {
+      self.refreshStatus()
+    }, 100)
+    if (fetchBridge.getStatus() === 'disabled') {
+      this.status = '网桥已关闭'
+    } else {
+      this.status = '网桥已开启，正在连接...'
+    }
+  },
+  testBridge() {
+    var self = this
+    this.status = '正在测试...'
+    fetchBridge.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/online',
+      responseType: 'json',
+      timeout: 15000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.code === 0) {
+          self.status = '测试成功：网桥通信正常'
+        } else {
+          self.status = '测试完成：返回码 ' + (data ? data.code : '未知')
+        }
+        self.refreshStatus()
+      },
+      fail: function() {
+        self.status = '测试失败：请检查网桥连接'
+        self.refreshStatus()
+      }
+    })
+  },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_blue.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 10px;
+
+}
+.header {
+  width: 316px;
+  height: 42px;
+  flex-direction: row;
+  align-items: center;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: bold;
+}
+.status-card {
+  width: 316px;
+  margin-top: 12px;
+  border-radius: 24px;
+  background-color: #1a1a2e;
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  padding: 16px;
+  flex-direction: column;
+}
+.status-icon-row {
+  flex-direction: row;
+  align-items: center;
+}
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 6px;
+  margin-right: 10px;
+}
+.dot-on {
+  background-color: #4caf50;
+}
+.dot-off {
+  background-color: #666666;
+}
+.dot-connecting {
+  background-color: #ff9800;
+}
+.status-title {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: bold;
+}
+.status-desc {
+  color: rgba(255,255,255,0.5);
+  font-size: 12px;
+  margin-top: 8px;
+}
+.setting-card {
+  width: 316px;
+  height: 52px;
+  margin-top: 8px;
+  border-radius: 24px;
+  background-color: #1a1a2e;
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  flex-direction: row;
+  align-items: center;
+  padding: 0 16px;
+}
+.setting-title {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: bold;
+  flex: 1;
+}
+.setting-value {
+  color: #fb7299;
+  font-size: 18px;
+  font-weight: bold;
+}
+.setting-arrow {
+  color: rgba(255,255,255,0.5);
+  font-size: 20px;
+}
+.caps-card {
+  width: 316px;
+  margin-top: 8px;
+  border-radius: 24px;
+  background-color: #1a1a2e;
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  padding: 16px;
+  flex-direction: column;
+}
+.caps-title {
+  color: #fb7299;
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+.caps-text {
+  color: rgba(255,255,255,0.8);
+  font-size: 12px;
+  lines: 10;
+}
+.info-card {
+  width: 316px;
+  margin-top: 8px;
+  border-radius: 24px;
+  background-color: #1a1a2e;
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  padding: 16px;
+  flex-direction: column;
+}
+.info-title {
+  color: #fb7299;
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+.info-text {
+  color: rgba(255,255,255,0.5);
+  font-size: 11px;
+  margin-top: 4px;
+}
+.status {
+  width: 292px;
+  color: rgba(255,255,255,0.4);
+  font-size: 11px;
+  margin-top: 10px;
+  text-align: center;
+}
+</style>

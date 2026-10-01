@@ -1,0 +1,314 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <image class="back-icon" src="/common/images/icon_back.jpg" onclick="back" />
+      <text class="header-title">直播</text>
+    </div>
+
+    <div class="cover-wrap">
+      <image class="cover-img" src="{{coverPic}}" />
+      <text class="live-badge">LIVE</text>
+    </div>
+
+    <text class="title">{{title}}</text>
+
+    <div class="up-row" onclick="openUpHome">
+      <image class="up-face" src="{{upFace}}" />
+      <text class="up-name">{{uname}}</text>
+    </div>
+
+    <div class="stats">
+      <div class="stat-item">
+        <text class="stat-num">{{onlineText}}</text>
+        <text class="stat-label">实时观看</text>
+      </div>
+      <div class="stat-item">
+        <text class="stat-num">{{likeText}}</text>
+        <text class="stat-label">关注人数</text>
+      </div>
+    </div>
+
+    <div class="actions">
+      <div class="action-btn" onclick="openInBrowser">
+        <text class="action-text">前往直播间</text>
+      </div>
+      <div class="action-btn qr-btn" onclick="showQrCode">
+        <image class="action-icon" src="/common/images/vid_watchonphone.png" />
+        <text class="action-text">手机上看</text>
+      </div>
+    </div>
+
+    <text class="note">{{note}}</text>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetch from '@system.fetch'
+
+export default {
+  private: {
+    roomId: '',
+    title: '直播间',
+    uname: '主播',
+    coverPic: '/common/images/icon.png',
+    onlineText: '0',
+    likeText: '0',
+    note: '正在获取直播间信息...',
+    areaName: '',
+    loadRetry: 0,
+    upFace: '/common/images/icon.png',
+    upUid: ''
+  },
+  onInit() {
+    if (this.title === '') {
+      this.title = '直播间'
+    }
+    this.loadLiveInfo()
+  },
+  onShow() {
+  },
+  loadLiveInfo() {
+    var self = this
+    if (!this.roomId) {
+      this.note = '缺少房间号'
+      return
+    }
+    this.note = '正在获取直播间信息...'
+    fetch.fetch({
+      url: 'https://api.live.bilibili.com/room/v1/Room/get_info?room_id=' + this.roomId,
+      header: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://live.bilibili.com/' },
+      responseType: 'json',
+      timeout: 30000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.data) {
+          var d = data.data
+          self.loadRetry = 0
+          self.title = d.title || self.title
+          self.uname = d.uname || self.uname
+          self.areaName = d.area_name || ''
+          self.upUid = d.uid ? '' + d.uid : ''
+          var online = d.online || 0
+          if (online > 10000) {
+            self.onlineText = (online / 10000).toFixed(1) + '万'
+          } else {
+            self.onlineText = '' + online
+          }
+          var attention = d.attention || 0
+          if (attention > 10000) {
+            self.likeText = (attention / 10000).toFixed(1) + '万'
+          } else {
+            self.likeText = '' + attention
+          }
+          var pic = d.user_cover || d.keyframe || self.coverPic
+          if (pic.indexOf('http') !== 0 && pic.indexOf('//') === 0) {
+            pic = 'https:' + pic
+          }
+          if (pic.indexOf('hdslb.com') > 0 || pic.indexOf('biliimg.com') > 0) {
+            pic = pic + '@312w_176h_1e_1c.jpg'
+          }
+          self.coverPic = pic
+          var face = d.face || d.user_cover || self.coverPic
+          if (face.indexOf('http') !== 0 && face.indexOf('//') === 0) {
+            face = 'https:' + face
+          }
+          if (face.indexOf('hdslb.com') > 0 || face.indexOf('biliimg.com') > 0) {
+            face = face + '@24w_24h_1e_1c.jpg'
+          }
+          self.upFace = face
+          self.note = d.live_status === 1 ? '正在直播中 · ' + self.areaName : '未开播'
+        } else {
+          self.onLiveLoadFail()
+        }
+      },
+      fail: function() {
+        self.onLiveLoadFail()
+      }
+    })
+  },
+  onLiveLoadFail() {
+    this.loadRetry = this.loadRetry + 1
+    if (this.loadRetry <= 2) {
+      this.note = '重试获取中(' + this.loadRetry + ')...'
+      var self = this
+      setTimeout(function() {
+        self.loadLiveInfo()
+      }, 3000)
+    } else {
+      this.note = '获取直播间信息失败，请重试'
+    }
+  },
+  openInBrowser() {
+    this.note = '请在手环浏览器中打开: live.bilibili.com/' + this.roomId
+  },
+  openUpHome() {
+    if (!this.upUid) {
+      this.note = 'UP主信息还未加载完成'
+      return
+    }
+    router.push({ uri: '/uphome', params: { mid: this.upUid, name: this.uname, face: this.upFace } })
+  },
+  showQrCode() {
+    if (!this.roomId) {
+      this.note = '房间号尚未加载完成'
+      return
+    }
+    router.push({ uri: '/watchonphone', params: { type: 'live', id: this.roomId } })
+  },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_pink.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 4px 12px;
+
+}
+.header {
+  width: 312px;
+  height: 38px;
+  flex-direction: row;
+  align-items: center;
+}
+.back-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+}
+.header-title {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.cover-wrap {
+  width: 312px;
+  height: 176px;
+  border-radius: 20px;
+  background-color: #1a1a1a;
+  justify-content: flex-end;
+  flex-direction: column;
+  margin-top: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.cover-img {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 312px;
+  height: 176px;
+  border-radius: 20px;
+  object-fit: cover;
+}
+.live-badge {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: bold;
+  background-color: #fb7299;
+  border-radius: 8px;
+  padding: 2px 8px;
+}
+.title {
+  width: 312px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 8px;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.up-row {
+  width: 312px;
+  flex-direction: row;
+  margin-top: 4px;
+  align-items: center;
+}
+.up-face {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+}
+.up-name {
+  color: rgba(255,255,255,0.6);
+  font-size: 11px;
+  margin-left: 6px;
+}
+.stats {
+  width: 312px;
+  flex-direction: row;
+  margin-top: 10px;
+  justify-content: space-around;
+}
+.stat-item {
+  flex-direction: column;
+  align-items: center;
+}
+.stat-num {
+  color: #fb7299;
+  font-size: 18px;
+  font-weight: bold;
+}
+.stat-label {
+  color: rgba(255,255,255,0.5);
+  font-size: 10px;
+  margin-top: 2px;
+}
+.actions {
+  width: 312px;
+  flex-direction: row;
+  justify-content: center;
+  margin-top: 16px;
+  gap: 8px;
+}
+.action-btn {
+  width: 146px;
+  height: 40px;
+  border-radius: 20px;
+  background-color: #fb7299;
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.15);
+  justify-content: center;
+  align-items: center;
+  flex-direction: row;
+}
+.qr-btn {
+  background-color: rgba(251,114,153,0.2);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+}
+.action-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 4px;
+}
+.action-text {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+}
+.note {
+  width: 300px;
+  color: rgba(255,255,255,0.3);
+  font-size: 9px;
+  text-align: center;
+  margin-top: 10px;
+}
+</style>

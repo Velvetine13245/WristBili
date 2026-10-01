@@ -1,0 +1,133 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <image class="back-icon" src="/common/images/icon_back.jpg" onclick="back" />
+      <text class="header-title">{{pageTitle}}</text>
+    </div>
+
+    <div class="qr-card">
+      <text class="qr-title">{{qrTitle}}</text>
+      <image class="qr-img" src="{{qrUrl}}" />
+      <text class="qr-hint">{{qrHint}}</text>
+      <text class="qr-url">{{qrUrlText}}</text>
+    </div>
+
+    <text class="note">{{note}}</text>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+
+export default {
+  private: {
+    pageTitle: '手机上看',
+    qrTitle: '扫码观看',
+    qrUrl: '',
+    qrUrlText: '',
+    qrHint: '用手机扫描二维码即可观看',
+    note: ''
+  },
+  onInit() {
+    var type = this.type || 'video'
+    var id = this.id || ''
+    var watchUrl = ''
+    if (type === 'live') {
+      this.pageTitle = '手机看直播'
+      this.qrTitle = '扫码看直播'
+      this.qrHint = '用手机扫描二维码即可观看直播'
+      watchUrl = 'https://live.bilibili.com/' + id
+    } else {
+      this.pageTitle = '手机上看'
+      this.qrTitle = '扫码观看'
+      this.qrHint = '用手机扫描二维码即可在手机上观看'
+      watchUrl = 'https://www.bilibili.com/video/' + id
+    }
+    this.qrUrlText = watchUrl
+    var encoded = encodeURIComponent(watchUrl)
+    this.qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=1&color=000000&bgcolor=ffffff&qzone=0&data=' + encoded
+    this.note = '二维码加载中...'
+  },
+  onShow() {
+  },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_pink.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 4px 12px;
+
+}
+.header {
+  width: 312px;
+  height: 38px;
+  flex-direction: row;
+  align-items: center;
+}
+.back-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+}
+.header-title {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.qr-card {
+  width: 280px;
+  background-color: #1a1a1a;
+  border-radius: 20px;
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  padding: 20px;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+.qr-title {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 14px;
+}
+.qr-img {
+  width: 160px;
+  height: 160px;
+  border-radius: 8px;
+  background-color: #ffffff;
+}
+.qr-hint {
+  color: rgba(255,255,255,0.5);
+  font-size: 11px;
+  margin-top: 12px;
+  text-align: center;
+}
+.qr-url {
+  color: rgba(251,114,153,0.6);
+  font-size: 9px;
+  margin-top: 6px;
+  text-align: center;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.note {
+  width: 300px;
+  color: rgba(255,255,255,0.3);
+  font-size: 9px;
+  text-align: center;
+  margin-top: 12px;
+}
+</style>

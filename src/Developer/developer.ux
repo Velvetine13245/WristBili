@@ -1,0 +1,146 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back" onclick="back"><text class="back-text">‹</text></div>
+      <text class="title">@Velvetine</text>
+    </div>
+
+    <div class="dev-card">
+      <image class="dev-avatar" src="/common/images/icon.png" />
+      <text class="dev-name">@Velvetine</text>
+      <text class="dev-role">WristBili 开发者</text>
+    </div>
+
+    <div class="info-card">
+      <div class="info-row">
+        <text class="info-label">应用名称</text>
+        <text class="info-value">WristBili</text>
+      </div>
+      <div class="info-row">
+        <text class="info-label">版本</text>
+        <text class="info-value">v2.1.0</text>
+      </div>
+      <div class="info-row">
+        <text class="info-label">平台</text>
+        <text class="info-value">手环快应用</text>
+      </div>
+      <div class="info-row">
+        <text class="info-label">开发者</text>
+        <text class="info-value">@Velvetine</text>
+      </div>
+    </div>
+
+    <text class="thanks">感谢使用 WristBili</text>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+
+export default {
+  private: {
+  },
+  onInit() {
+  },
+  onShow() {
+  },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_blue.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 10px;
+
+}
+.header {
+  width: 316px;
+  height: 42px;
+  flex-direction: row;
+  align-items: center;
+}
+.back {
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+  align-items: center;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 34px;
+}
+.title {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.dev-card {
+  width: 316px;
+  height: 120px;
+  margin-top: 12px;
+  border-radius: 24px;
+  background-image: linear-gradient(135deg, #e91e63, #9c27b0);
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.dev-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 26px;
+}
+.dev-name {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: bold;
+  margin-top: 8px;
+}
+.dev-role {
+  color: rgba(255,255,255,0.7);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.info-card {
+  width: 316px;
+  margin-top: 12px;
+  border-radius: 20px;
+  background-color: rgba(255,255,255,0.12);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  flex-direction: column;
+  padding: 12px 16px;
+}
+.info-row {
+  width: 284px;
+  height: 36px;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+.info-label {
+  color: rgba(255,255,255,0.6);
+  font-size: 14px;
+}
+.info-value {
+  color: #fb7299;
+  font-size: 14px;
+  font-weight: bold;
+}
+.thanks {
+  color: rgba(255,255,255,0.35);
+  font-size: 12px;
+  margin-top: 16px;
+  text-align: center;
+}
+</style>

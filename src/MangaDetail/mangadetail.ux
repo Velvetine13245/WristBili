@@ -1,0 +1,298 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back" onclick="back"><text class="back-text">‹</text></div>
+      <text class="title">漫画详情</text>
+    </div>
+
+    <div class="detail-card">
+      <image class="detail-cover" src="{{cover}}" />
+      <div class="detail-info">
+        <text class="detail-title">{{title}}</text>
+        <text class="detail-author">{{author}}</text>
+        <text class="detail-tags">{{tags}}</text>
+      </div>
+    </div>
+
+    <text class="detail-desc">{{desc}}</text>
+
+    <text class="chapter-header">章节列表</text>
+
+    <div class="chapter-list">
+      <div class="chapter-item" onclick="read1" if="{{c1Show}}"><text class="chapter-text">{{c1Name}}</text></div>
+      <div class="chapter-item" onclick="read2" if="{{c2Show}}"><text class="chapter-text">{{c2Name}}</text></div>
+      <div class="chapter-item" onclick="read3" if="{{c3Show}}"><text class="chapter-text">{{c3Name}}</text></div>
+      <div class="chapter-item" onclick="read4" if="{{c4Show}}"><text class="chapter-text">{{c4Name}}</text></div>
+    </div>
+
+    <text class="status">{{status}}</text>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetch from '@system.fetch'
+
+function cleanUrl(url) {
+  if (!url) return ''
+  if (url.indexOf('http') !== 0 && url.indexOf('//') === 0) {
+    return 'https:' + url
+  }
+  return url
+}
+
+function compressCover(url) {
+  if (!url) return ''
+  url = cleanUrl(url)
+  if (url.indexOf('hdslb.com') > 0 || url.indexOf('biliimg.com') > 0) {
+    if (url.indexOf('@') < 0) {
+      url = url + '@120w_160h_1e_1c.jpg'
+    }
+  }
+  return url
+}
+
+export default {
+  private: {
+    comicId: '',
+    title: '',
+    author: '',
+    cover: '/common/images/icon_manga.png',
+    desc: '',
+    tags: '',
+    chapters: [],
+    status: '正在加载漫画详情...',
+    c1Show: false, c1Name: '', c1Id: '',
+    c2Show: false, c2Name: '', c2Id: '',
+    c3Show: false, c3Name: '', c3Id: '',
+    c4Show: false, c4Name: '', c4Id: '',
+  },
+  onInit() {
+    if (!this.comicId) {
+      this.status = '缺少漫画ID'
+      return
+    }
+    this.loadDetailProxy()
+  },
+  onShow() {
+  },
+  loadDetailProxy() {
+    var self = this
+    this.status = '正在加载详情...'
+    fetch.fetch({
+      url: 'https://apis.netstart.cn/bcomic/ComicDetail?comic_id=' + this.comicId,
+      method: 'GET',
+      header: {
+        'User-Agent': 'Mozilla/5.0'
+      },
+      responseType: 'json',
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data) } catch (e) { data = null }
+        }
+        if (!data || data.code !== 0) {
+          self.status = '详情接口不可用，请检查网络'
+          return
+        }
+        self.parseDetailProxy(data.data)
+      },
+      fail: function() {
+        self.status = '详情请求失败，请检查网络'
+      }
+    })
+  },
+  parseDetailProxy(d) {
+    if (!d) {
+      this.status = '数据为空'
+      return
+    }
+    this.title = d.title || this.title || '未知标题'
+    var authors = d.author_name || []
+    if (Array.isArray(authors) && authors.length > 0) {
+      this.author = authors.join(' ')
+    } else {
+      this.author = d.author || '未知作者'
+    }
+    var coverUrl = d.vertical_cover || d.square_cover || d.horizontal_cover || ''
+    if (coverUrl) {
+      this.cover = compressCover(coverUrl)
+    }
+    this.desc = d.evaluate || d.introduction || ''
+    var styles = d.styles || []
+    if (Array.isArray(styles) && styles.length > 0) {
+      this.tags = styles.join(' ')
+    } else {
+      this.tags = ''
+    }
+    var epList = d.ep_list || []
+    this.chapters = epList
+    this.applyChapters(epList)
+    this.status = '已加载 ' + epList.length + ' 个章节'
+  },
+  applyChapters(list) {
+    var i = 0
+    for (i = 1; i <= 4; i++) {
+      this['c' + i + 'Show'] = false
+      this['c' + i + 'Name'] = ''
+      this['c' + i + 'Id'] = ''
+    }
+    for (i = 0; i < list.length && i < 4; i++) {
+      var item = list[i]
+      var n = i + 1
+      this['c' + n + 'Show'] = true
+      this['c' + n + 'Name'] = item.title || item.short_title || ('第' + item.ord + '话')
+      this['c' + n + 'Id'] = '' + (item.id || '')
+    }
+  },
+  readItem(n) {
+    var epId = this['c' + n + 'Id']
+    if (!epId) {
+      this.status = '缺少章节ID'
+      return
+    }
+    router.push({
+      uri: '/mangareader',
+      params: {
+        comicId: this.comicId,
+        epId: epId,
+        title: this.title,
+        chapterName: this['c' + n + 'Name']
+      }
+    })
+  },
+  read1() { this.readItem(1) },
+  read2() { this.readItem(2) },
+  read3() { this.readItem(3) },
+  read4() { this.readItem(4) },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_blue.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 6px 8px;
+
+}
+.header {
+  width: 318px;
+  height: 38px;
+  flex-direction: row;
+  align-items: center;
+}
+.back {
+  width: 34px;
+  height: 34px;
+  justify-content: center;
+  align-items: center;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 30px;
+}
+.title {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.detail-card {
+  width: 318px;
+  height: 100px;
+  margin-top: 8px;
+  border-radius: 16px;
+  background-color: rgba(255,255,255,0.1);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  flex-direction: row;
+  padding: 8px;
+  align-items: center;
+}
+.detail-cover {
+  width: 64px;
+  height: 84px;
+  border-radius: 8px;
+  background-color: #fb7299;
+}
+.detail-info {
+  flex-direction: column;
+  margin-left: 10px;
+  flex: 1;
+  justify-content: center;
+}
+.detail-title {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.detail-author {
+  color: rgba(255,255,255,0.6);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.detail-tags {
+  color: #fb7299;
+  font-size: 10px;
+  margin-top: 4px;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.detail-desc {
+  width: 318px;
+  color: rgba(255,255,255,0.7);
+  font-size: 11px;
+  margin-top: 8px;
+  lines: 3;
+  text-overflow: ellipsis;
+}
+.chapter-header {
+  width: 318px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 10px;
+}
+.chapter-list {
+  width: 320px;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 6px;
+}
+.chapter-item {
+  width: 316px;
+  height: 40px;
+  margin-top: 4px;
+  border-radius: 12px;
+  background-color: rgba(255,255,255,0.08);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  justify-content: center;
+  align-items: center;
+}
+.chapter-text {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+.status {
+  width: 318px;
+  color: rgba(255,255,255,0.5);
+  font-size: 10px;
+  margin-top: 6px;
+  text-align: center;
+}
+</style>

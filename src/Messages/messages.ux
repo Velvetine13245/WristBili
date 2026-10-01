@@ -1,0 +1,433 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <div class="back" onclick="back"><text class="back-text">‹</text></div>
+      <text class="title">私信</text>
+    </div>
+    <text class="status">{{status}}</text>
+
+    <div class="list" if="{{listShow}}">
+      <div class="msg-card" onclick="open1" if="{{m1Show}}">
+        <image class="avatar" src="{{m1Face}}" />
+        <div class="msg-info">
+          <text class="name">{{m1Name}}</text>
+          <text class="msg">{{m1Text}}</text>
+        </div>
+      </div>
+      <div class="msg-card" onclick="open2" if="{{m2Show}}">
+        <image class="avatar" src="{{m2Face}}" />
+        <div class="msg-info">
+          <text class="name">{{m2Name}}</text>
+          <text class="msg">{{m2Text}}</text>
+        </div>
+      </div>
+      <div class="msg-card" onclick="open3" if="{{m3Show}}">
+        <image class="avatar" src="{{m3Face}}" />
+        <div class="msg-info">
+          <text class="name">{{m3Name}}</text>
+          <text class="msg">{{m3Text}}</text>
+        </div>
+      </div>
+      <div class="msg-card" onclick="open4" if="{{m4Show}}">
+        <image class="avatar" src="{{m4Face}}" />
+        <div class="msg-info">
+          <text class="name">{{m4Name}}</text>
+          <text class="msg">{{m4Text}}</text>
+        </div>
+      </div>
+      <div class="msg-card" onclick="open5" if="{{m5Show}}">
+        <image class="avatar" src="{{m5Face}}" />
+        <div class="msg-info">
+          <text class="name">{{m5Name}}</text>
+          <text class="msg">{{m5Text}}</text>
+        </div>
+      </div>
+      <div class="msg-card" onclick="open6" if="{{m6Show}}">
+        <image class="avatar" src="{{m6Face}}" />
+        <div class="msg-info">
+          <text class="name">{{m6Name}}</text>
+          <text class="msg">{{m6Text}}</text>
+        </div>
+      </div>
+      <div class="msg-card" onclick="open7" if="{{m7Show}}">
+        <image class="avatar" src="{{m7Face}}" />
+        <div class="msg-info">
+          <text class="name">{{m7Name}}</text>
+          <text class="msg">{{m7Text}}</text>
+        </div>
+      </div>
+      <div class="msg-card" onclick="open8" if="{{m8Show}}">
+        <image class="avatar" src="{{m8Face}}" />
+        <div class="msg-info">
+          <text class="name">{{m8Name}}</text>
+          <text class="msg">{{m8Text}}</text>
+        </div>
+      </div>
+
+      <div class="refresh" onclick="loadMessages"><text class="refresh-text">刷新私信</text></div>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import fetch from '@system.fetch'
+import storage from '@system.storage'
+
+export default {
+  private: {
+    status: '正在加载私信会话...',
+    listShow: true,
+    sessions: [],
+    m1Show: false, m1Name: '', m1Text: '', m1Face: '/common/images/icon.png', m1Uid: '',
+    m2Show: false, m2Name: '', m2Text: '', m2Face: '/common/images/icon.png', m2Uid: '',
+    m3Show: false, m3Name: '', m3Text: '', m3Face: '/common/images/icon.png', m3Uid: '',
+    m4Show: false, m4Name: '', m4Text: '', m4Face: '/common/images/icon.png', m4Uid: '',
+    m5Show: false, m5Name: '', m5Text: '', m5Face: '/common/images/icon.png', m5Uid: '',
+    m6Show: false, m6Name: '', m6Text: '', m6Face: '/common/images/icon.png', m6Uid: '',
+    m7Show: false, m7Name: '', m7Text: '', m7Face: '/common/images/icon.png', m7Uid: '',
+    m8Show: false, m8Name: '', m8Text: '', m8Face: '/common/images/icon.png', m8Uid: ''
+  },
+  onInit() {
+    this.loadMessages()
+  },
+  onShow() {
+  },
+  loadMessages() {
+    var self = this
+    this.status = '正在加载私信会话...'
+    storage.get({
+      key: 'bili_cookie',
+      success: function(cookie) {
+        if (!cookie || cookie.length < 10) {
+          self.status = '未登录，无法读取私信'
+          return
+        }
+        fetch.fetch({
+          url: 'https://api.vc.bilibili.com/session_svr/v1/session_svr/get_sessions?session_type=1&group_fold=1&unfollow_fold=0&sort_rule=2&page_size=10',
+          header: {
+            'Cookie': cookie,
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+            'Referer': 'https://message.bilibili.com/',
+            'Origin': 'https://message.bilibili.com'
+          },
+          responseType: 'json',
+          timeout: 15000,
+          success: function(res) {
+            var data = res.data
+            if (typeof data === 'string') {
+              data = JSON.parse(data)
+            }
+            if (data && data.code === 0) {
+              var list = []
+              if (data.data && data.data.session_list) {
+                list = data.data.session_list
+              } else if (data.data && data.data.sessions) {
+                list = data.data.sessions
+              }
+              if (list && list.length > 0) {
+                self.applyList(list)
+              } else {
+                self.status = '暂无私信会话'
+              }
+            } else {
+              self.status = '私信接口返回异常'
+            }
+          },
+          fail: function() {
+            self.status = '私信接口请求失败'
+          }
+        })
+      },
+      fail: function() {
+        self.status = '未登录，无法读取私信'
+      }
+    })
+  },
+  parseLastMsg(lastMsg) {
+    if (!lastMsg) {
+      return '暂无消息内容'
+    }
+    if (typeof lastMsg === 'string') {
+      try {
+        var obj = JSON.parse(lastMsg)
+        return obj.content || obj.text || lastMsg
+      } catch (e) {
+        return lastMsg
+      }
+    }
+    if (typeof lastMsg === 'object') {
+      if (lastMsg.content) return lastMsg.content
+      if (lastMsg.text) return lastMsg.text
+    }
+    return '暂无消息内容'
+  },
+  parseText(raw) {
+    var text = this.parseLastMsg(raw)
+    if (text.length > 36) {
+      text = text.substring(0, 36)
+    }
+    return text
+  },
+  cleanImageUrl(url) {
+    if (!url || typeof url !== 'string') {
+      return '/common/images/icon.png'
+    }
+    if (url.indexOf('//') === 0) {
+      url = 'https:' + url
+    }
+    if (url.indexOf('@') > 0) {
+      url = url.split('@')[0]
+    }
+    if (url.indexOf('hdslb.com') > 0 || url.indexOf('biliimg.com') > 0) {
+      url = url + '@360w_360h_1e_1c.jpg'
+    }
+    return url
+  },
+  getTalkerId(item) {
+    return '' + (item.talker_id || item.receiver_id || item.uid || item.mid || '')
+  },
+  getFace(item) {
+    var face = ''
+    if (item.account_info && item.account_info.face) {
+      face = item.account_info.face
+    } else if (item.talker_face) {
+      face = item.talker_face
+    } else if (item.face) {
+      face = item.face
+    } else if (item.avatar) {
+      face = item.avatar
+    }
+    return this.cleanImageUrl(face)
+  },
+  getName(item) {
+    var name = ''
+    if (item.account_info && item.account_info.name) {
+      name = item.account_info.name
+    } else if (item.talker_uname) {
+      name = item.talker_uname
+    } else if (item.uname) {
+      name = item.uname
+    } else if (item.name) {
+      name = item.name
+    } else if (item.nickname) {
+      name = item.nickname
+    }
+    return name || '私信用户'
+  },
+  fetchUserInfo(mid, n) {
+    var self = this
+    if (!mid) return
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/card?mid=' + mid,
+      header: {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36'
+      },
+      responseType: 'json',
+      timeout: 12000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.code === 0 && data.data && data.data.card) {
+          var face = data.data.card.face || ''
+          var name = data.data.card.name || ''
+          if (face) {
+            self['m' + n + 'Face'] = self.cleanImageUrl(face)
+          }
+          if (name) {
+            self['m' + n + 'Name'] = name
+          }
+        }
+      },
+      fail: function() {
+        self.fetchUserInfoFallback(mid, n)
+      }
+    })
+  },
+  fetchUserInfoFallback(mid, n) {
+    var self = this
+    fetch.fetch({
+      url: 'https://api.bilibili.com/x/web-interface/search/type?search_type=bili_user&keyword=' + mid,
+      header: {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+        'Referer': 'https://www.bilibili.com/'
+      },
+      responseType: 'json',
+      timeout: 12000,
+      success: function(res) {
+        var data = res.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+        }
+        if (data && data.code === 0 && data.data && data.data.result && data.data.result.length > 0) {
+          var user = data.data.result[0]
+          var face = user.upic || ''
+          var name = user.uname || ''
+          if (face) {
+            if (face.indexOf('//') === 0) face = 'https:' + face
+            self['m' + n + 'Face'] = self.cleanImageUrl(face)
+          }
+          if (name) {
+            self['m' + n + 'Name'] = name
+          }
+        }
+      },
+      fail: function() {}
+    })
+  },
+  applyList(list) {
+    var i = 0
+    this.sessions = list
+    this.listShow = true
+    for (i = 1; i <= 8; i++) {
+      this['m' + i + 'Show'] = false
+      this['m' + i + 'Face'] = '/common/images/icon.png'
+    }
+    for (i = 0; i < list.length && i < 8; i++) {
+      var item = list[i]
+      var n = i + 1
+      var talkerMid = this.getTalkerId(item)
+      var face = this.getFace(item)
+      var name = this.getName(item)
+      this['m' + n + 'Show'] = true
+      this['m' + n + 'Name'] = name
+      this['m' + n + 'Text'] = this.parseText(item.last_msg)
+      this['m' + n + 'Face'] = face
+      this['m' + n + 'Uid'] = talkerMid
+      if ((!face || face === '/common/images/icon.png') || (!name || name === '私信用户')) {
+        this.fetchUserInfo(talkerMid, n)
+      }
+    }
+    this.status = '已加载 ' + (list.length > 8 ? 8 : list.length) + ' 个会话'
+  },
+  openItem(n) {
+    var item = this.sessions[n - 1]
+    if (!item) return
+    var name = this['m' + n + 'Name'] || this.getName(item)
+    var face = this['m' + n + 'Face'] || this.getFace(item)
+    var uid = this['m' + n + 'Uid'] || this.getTalkerId(item)
+    router.push({
+      uri: '/chatdetail',
+      params: {
+        targetName: name,
+        targetFace: face,
+        targetUid: uid
+      }
+    })
+  },
+  open1() { this.openItem(1) },
+  open2() { this.openItem(2) },
+  open3() { this.openItem(3) },
+  open4() { this.openItem(4) },
+  open5() { this.openItem(5) },
+  open6() { this.openItem(6) },
+  open7() { this.openItem(7) },
+  open8() { this.openItem(8) },
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  background-image: url(/common/images/bg_blue.png);
+  background-size: 120%;
+  background-position: center -1px;
+  background-repeat: no-repeat;
+  padding: 8px;
+}
+.header {
+  width: 318px;
+  height: 42px;
+  flex-direction: row;
+  align-items: center;
+  flex-shrink: 0;
+}
+.back {
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+  align-items: center;
+}
+.back-text {
+  color: #ffffff;
+  font-size: 34px;
+}
+.title {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.status {
+  width: 310px;
+  color: #fb7299;
+  font-size: 11px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.list {
+  width: 318px;
+  flex-direction: column;
+  align-items: center;
+}
+.msg-card {
+  width: 310px;
+  height: 54px;
+  margin-top: 8px;
+  border-radius: 14px;
+  background-color: rgba(255,255,255,0.08);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.12);
+  flex-direction: row;
+  padding: 6px;
+  align-items: center;
+}
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  margin-right: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.msg-info {
+  flex: 1;
+  flex-direction: column;
+}
+.name {
+  color: #fb7299;
+  font-size: 12px;
+  font-weight: bold;
+}
+.msg {
+  color: rgba(255,255,255,0.7);
+  font-size: 12px;
+  margin-top: 4px;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+.refresh {
+  width: 200px;
+  height: 34px;
+  margin-top: 10px;
+  border-radius: 17px;
+  background-color: #fb7299;
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.15);
+  justify-content: center;
+  align-items: center;
+}
+.refresh-text {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+}
+</style>
