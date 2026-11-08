@@ -80,6 +80,11 @@
   .video-fallback { text-align: center; margin-top: 18px; color: var(--sub); font-size: 14px; }
   .video-fallback a { color: var(--pink); font-weight: 700; }
   .sync-grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); max-width: 820px; margin: 0 auto; }
+  .steps { max-width: 820px; margin: 28px auto 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 14px; }
+  .steps li { counter-increment: s; position: relative; padding: 18px 20px 18px 60px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.03); }
+  .steps li::before { content: counter(s); position: absolute; left: 18px; top: 17px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; color: #fff; background: linear-gradient(135deg, var(--pink), #ff4f81); }
+  .steps b { display: block; font-size: 15px; margin-bottom: 6px; }
+  .steps span { color: var(--sub); font-size: 14px; line-height: 1.7; }
   .hero::before {
     content: ""; position: absolute; top: -220px; left: 50%; transform: translateX(-50%);
     width: 760px; height: 760px; border-radius: 50%;
@@ -379,6 +384,25 @@
       </div>
     </div>
     <p class="dl-note">适配作者 <b style="color:#fb7299">羊羽Wes</b>。这是测试版，功能与主线 3.1.0 不同步；设备本身支持 fetch 的请直接下载上方正式版。</p>
+
+    <div class="sec-head" style="margin-top:56px">
+      <div class="kicker">Tutorial</div>
+      <h2>同步器使用教程</h2>
+      <p>先看视频，再照着下面的顺序装，几分钟就能跑起来。</p>
+    </div>
+    <div class="video-wrap" style="max-width:860px;margin:0 auto">
+      <iframe src="https://player.bilibili.com/player.html?bvid=BV1NxbD68EUz&page=1&high_quality=1&danmaku=0&autoplay=0"
+              scrolling="no" frameborder="0" framespacing="0" allowfullscreen="true"></iframe>
+    </div>
+    <p class="video-fallback">播放不了？<a href="https://b23.tv/d3pm85h" target="_blank" rel="noopener">在 B 站观看教程</a></p>
+
+    <ol class="steps">
+      <li><b>装同步器</b><span>下载并安装上面的 APK，打开后授予通知与后台运行权限，避免被系统杀掉。</span></li>
+      <li><b>启动服务</b><span>在同步器里开启服务，保持 App 留在后台，并记下它显示的地址和端口。</span></li>
+      <li><b>装手环端</b><span>用表盘自定义工具 / AstroBox 等把适配版 RPK 推到设备上。</span></li>
+      <li><b>连上同一网络</b><span>手环与手机连同一个 WiFi，在手环端设置里填入同步器地址，回到首页即可加载。</span></li>
+    </ol>
+    <p class="dl-note">视频里演示的界面若与你手上的版本略有差异，以视频步骤为准；仍连不上可以到 QQ 群 827739055 反馈。</p>
   </div>
 </section>
 
