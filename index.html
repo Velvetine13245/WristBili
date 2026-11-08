@@ -4,7 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>WristBili 腕上B站 · 手环看B站</title>
-<meta name="description" content="WristBili 腕上B站 —— 在智能手环/手表上看 B 站。支持小米手环、表盘自定义工具、米坛社区下载。" />
+<meta name="description" content="WristBili 腕上B站 —— 在智能手环/手表上看 B 站。开发者 Velvetine，已在米坛社区、表盘自定义工具、AstroBox、轻腕社区、OronBox、OrbitM 上架。" />
+<meta name="author" content="Velvetine" />
+<link rel="icon" type="image/png" href="assets/icon.png" />
+<link rel="apple-touch-icon" href="assets/icon.png" />
+<meta property="og:title" content="WristBili 腕上B站" />
+<meta property="og:description" content="在手环上看 B 站 · 开发者 Velvetine" />
+<meta property="og:image" content="assets/icon.png" />
 <style>
   :root {
     --pink: #fb7299;
@@ -40,8 +46,8 @@
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; letter-spacing: .3px; }
   .brand-mark {
     width: 30px; height: 30px; border-radius: 9px;
-    background: linear-gradient(135deg, var(--pink), #ff9db8);
-    display: grid; place-items: center; color: #fff; font-size: 15px; font-weight: 900;
+    object-fit: cover;
+    display: block;
   }
   .nav-links { display: flex; gap: 24px; font-size: 14px; color: var(--sub); }
   .nav-links a:hover { color: var(--pink); }
@@ -51,7 +57,19 @@
   }
 
   /* 首屏 */
-  .hero { position: relative; padding: 88px 0 72px; text-align: center; overflow: hidden; }
+  .hero {
+    position: relative; padding: 72px 0 72px; text-align: center; overflow: hidden;
+    background: url("assets/bg.png") center top / cover no-repeat;
+  }
+  .hero::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(8,8,11,.45) 0%, rgba(8,8,11,.75) 55%, var(--bg) 100%);
+  }
+  .hero .wrap { position: relative; z-index: 2; }
+  .app-icon {
+    width: 128px; height: 128px; border-radius: 30px; display: block; margin: 0 auto 20px;
+    box-shadow: 0 18px 48px rgba(251, 114, 153, .35), 0 0 0 1px rgba(255,255,255,.08);
+  }
   .hero::before {
     content: ""; position: absolute; top: -220px; left: 50%; transform: translateX(-50%);
     width: 760px; height: 760px; border-radius: 50%;
@@ -66,6 +84,8 @@
   h1 { font-size: clamp(34px, 6vw, 60px); line-height: 1.15; margin-top: 22px; font-weight: 900; letter-spacing: -.5px; }
   h1 .grad { background: linear-gradient(120deg, var(--pink), #ffb3c8 55%, var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .hero p.lead { max-width: 620px; margin: 20px auto 0; color: var(--sub); font-size: 17px; }
+  .byline { margin-top: 14px; font-size: 14px; color: rgba(255,255,255,.55); letter-spacing: .3px; }
+  .byline b { color: var(--pink); font-weight: 800; }
   .hero-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 34px; }
   .btn {
     display: inline-flex; align-items: center; gap: 8px;
@@ -160,7 +180,7 @@
 
 <header>
   <div class="wrap nav">
-    <div class="brand"><span class="brand-mark">腕</span> WristBili</div>
+    <div class="brand"><img class="brand-mark" src="assets/icon.png" alt="WristBili" /> WristBili</div>
     <nav class="nav-links">
       <a href="#features">功能</a>
       <a href="#download">下载</a>
@@ -174,9 +194,11 @@
 
 <section class="hero">
   <div class="wrap">
-    <span class="badge">● 已上架 米坛社区 · 表盘自定义工具</span>
+    <img class="app-icon" src="assets/icon.png" alt="WristBili 应用图标" />
+    <span class="badge">● 已上架 米坛社区 · 表盘自定义工具 · AstroBox · 轻腕社区 · OronBox · OrbitM</span>
     <h1>把 B 站装进<span class="grad">手腕</span>里</h1>
     <p class="lead">WristBili 腕上B站 —— 面向智能手环与手表的 B 站客户端。视频拆帧播放、弹幕、评论、动态、搜索、收藏，一块小屏幕也能刷 B 站。</p>
+    <p class="byline">开发者 <b>Velvetine</b> · 开源免费 · 无广告无内购</p>
     <div class="hero-actions">
       <a class="btn btn-primary" href="#download">下载安装包</a>
       <a class="btn btn-ghost" href="#opensource">查看开源</a>
@@ -184,7 +206,7 @@
     <div class="hero-meta">
       <div><b>30</b>每秒帧率</div>
       <div><b>3.1.0</b>当前版本</div>
-      <div><b>2</b>上架渠道</div>
+      <div><b>6</b>上架渠道</div>
       <div><b>免费</b>开源无广告</div>
     </div>
   </div>
@@ -251,6 +273,30 @@
         <h3>表盘自定义工具</h3>
         <p>已在「表盘自定义工具」上架，在 App 内搜索「WristBili」即可一键安装到手环。</p>
         <span class="dl-btn" style="cursor:default">在工具内搜索 WristBili</span>
+      </div>
+      <div class="dl-card">
+        <span class="tag">官方推荐</span>
+        <h3>AstroBox</h3>
+        <p>已在 AstroBox 上架。连接手环后进入应用商店，搜索「WristBili」即可安装。</p>
+        <a class="dl-btn" href="https://astrobox.online" target="_blank" rel="noopener">前往 AstroBox</a>
+      </div>
+      <div class="dl-card">
+        <span class="tag">官方推荐</span>
+        <h3>轻腕社区</h3>
+        <p>已在轻腕社区上架，可在社区的应用板块搜索「WristBili」下载安装。</p>
+        <a class="dl-btn" href="https://qingwear.top/" target="_blank" rel="noopener">前往轻腕社区</a>
+      </div>
+      <div class="dl-card">
+        <span class="tag">已上架</span>
+        <h3>OronBox</h3>
+        <p>已在 OronBox 上架，安装应用后搜索「WristBili」即可直接推送到设备。</p>
+        <span class="dl-btn" style="cursor:default">在 OronBox 内搜索 WristBili</span>
+      </div>
+      <div class="dl-card">
+        <span class="tag">已上架</span>
+        <h3>OrbitM</h3>
+        <p>已在 OrbitM 上架，打开应用商店搜索「WristBili」即可获取最新版本。</p>
+        <span class="dl-btn" style="cursor:default">在 OrbitM 内搜索 WristBili</span>
       </div>
       <div class="dl-card">
         <span class="tag">GitHub Release</span>
@@ -328,8 +374,8 @@ http://你的手机IP:3000
 
 <footer>
   <div class="wrap foot">
-    <div>© 2026 WristBili · 腕上B站 · 开源免费</div>
-    <div>已上架 米坛社区 / 表盘自定义工具 · 官方 QQ 群 827739055</div>
+    <div>© 2026 WristBili · 腕上B站 · 开发者 <b style="color:#fb7299">Velvetine</b> · 开源免费</div>
+    <div>已上架 米坛社区 / 表盘自定义工具 / AstroBox / 轻腕社区 / OronBox / OrbitM · 官方 QQ 群 827739055</div>
   </div>
 </footer>
 
