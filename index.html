@@ -25,7 +25,12 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body {
-    background: var(--bg);
+    background-color: var(--bg);
+    background-image: url("assets/bg.png");
+    background-repeat: no-repeat;
+    background-position: center top;
+    background-size: cover;
+    background-attachment: fixed;
     color: var(--txt);
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
     line-height: 1.7;
@@ -59,11 +64,11 @@
   /* 首屏 */
   .hero {
     position: relative; padding: 72px 0 72px; text-align: center; overflow: hidden;
-    background: url("assets/bg.png") center top / cover no-repeat;
+    background: transparent;
   }
   .hero::after {
     content: ""; position: absolute; inset: 0; pointer-events: none;
-    background: linear-gradient(180deg, rgba(8,8,11,.45) 0%, rgba(8,8,11,.75) 55%, var(--bg) 100%);
+    background: linear-gradient(180deg, rgba(8,8,11,.15) 0%, rgba(8,8,11,.5) 55%, var(--bg) 100%);
   }
   .hero .wrap { position: relative; z-index: 2; }
   /* 宣传图 */
@@ -219,6 +224,7 @@
     <p class="byline">开发者 <b>Velvetine</b> · 开源免费 · 无广告无内购</p>
     <div class="hero-actions">
       <a class="btn btn-primary" href="#download">下载安装包</a>
+      <a class="btn btn-ghost" href="#blueos">蓝河版 v1.0.4</a>
       <a class="btn btn-ghost" href="#opensource">查看开源</a>
     </div>
     <div class="hero-meta">
@@ -375,13 +381,13 @@
         <span class="tag">方屏</span>
         <h3>蓝河特别版 · 方屏</h3>
         <p>适用于 vivo WATCH GT / WATCH 3 等方形表盘设备，按 466×466 设计宽适配，31 个页面全量移植。</p>
-        <a class="dl-btn" href="https://github.com/Velvetine13245/WristBili/releases/download/blueos-v1.0.0/WristBili_blueos_1.0.0_watch-square.rpk">直接下载 RPK（3.0 MB）</a>
+        <a class="dl-btn" href="https://github.com/Velvetine13245/WristBili/releases/download/blueos-v1.0.0/WristBili_blueos_1.0.4_watch-square.rpk">直接下载 RPK（3.0 MB）</a>
       </div>
       <div class="dl-card">
         <span class="tag">圆屏</span>
         <h3>蓝河特别版 · 圆屏</h3>
         <p>适用于圆形表盘设备。当前由方屏布局缩放适配，边角可能被裁切，后续会单独调。</p>
-        <a class="dl-btn" href="https://github.com/Velvetine13245/WristBili/releases/download/blueos-v1.0.0/WristBili_blueos_1.0.0_watch-round.rpk">直接下载 RPK（3.0 MB）</a>
+        <a class="dl-btn" href="https://github.com/Velvetine13245/WristBili/releases/download/blueos-v1.0.0/WristBili_blueos_1.0.4_watch-round.rpk">直接下载 RPK（3.0 MB）</a>
       </div>
       <div class="dl-card">
         <span class="tag">安装说明</span>
